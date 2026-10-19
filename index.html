@@ -4,71 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MA2 Toolkit: Show Converter & GDTF</title>
-    <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- JSZip for packaging outputs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- Pako for .show.gz compression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
     <style>
-        body {
-            background-color: var(--tg-theme-bg-color, #1A1A1B);
-            color: var(--tg-theme-text-color, #E1E1E1);
-            font-family: 'Courier New', Courier, monospace;
-            padding: 15px;
-            margin: 0;
-        }
-        .container {
-            background-color: var(--tg-theme-secondary-bg-color, #252526);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #FFC800;
-            max-width: 520px;
-            margin: auto;
-        }
+        body { background-color: var(--tg-theme-bg-color, #1A1A1B); color: var(--tg-theme-text-color, #E1E1E1); font-family: 'Courier New', Courier, monospace; padding: 15px; margin: 0; }
+        .container { background-color: var(--tg-theme-secondary-bg-color, #252526); padding: 15px; border-radius: 8px; border: 1px solid #FFC800; max-width: 520px; margin: auto; }
         h2 { color: #FFC800; text-align: center; margin-top: 0; font-size: 18px; }
         .tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #444; }
         .tab { flex: 1; padding: 10px; text-align: center; background: #1A1A1B; color: #888; cursor: pointer; font-weight: bold; font-size: 12px; }
         .tab.active { background: #FFC800; color: #000; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-        
         .panel { display: none; }
         .panel.active { display: block; }
-
         label { display: block; margin-top: 10px; font-weight: bold; font-size: 12px; color: #FFC800; }
-        select, input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
-            background: #111;
-            color: #FFC800;
-            border: 1px solid #444;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 12px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            background-color: #FFC800;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        select, input[type="file"] { width: 100%; padding: 8px; margin-top: 4px; background: #111; color: #FFC800; border: 1px solid #444; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
+        button { width: 100%; padding: 12px; margin-top: 15px; background-color: #FFC800; color: #000; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; }
         button:active { background-color: #e6b400; }
         #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; }
-        
-        .chart-container {
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #444;
-            background: #111;
-        }
+        .chart-container { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #444; background: #111; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
         th, td { padding: 6px; border-bottom: 1px solid #222; }
         th { background: #222; color: #FFC800; position: sticky; top: 0; }
@@ -84,7 +38,6 @@
             <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
         </div>
 
-        <!-- TAB 1: SHOW & XML CONVERTER -->
         <div class="panel active" id="panel0">
             <label>Select Show (.show.gz) or XML Files</label>
             <input type="file" id="fileInput" multiple accept="*/*">
@@ -101,7 +54,6 @@
             <div id="status"></div>
         </div>
 
-        <!-- TAB 2: GDTF TO MA2 CONVERTER -->
         <div class="panel" id="panel1">
             <label>Select .gdtf Fixture File</label>
             <input type="file" id="gdtfInput" accept="*/*">
@@ -113,16 +65,9 @@
                 <b id="fxName" style="color:#FFC800;"></b><br/>
                 <span id="fxModes"></span>
             </div>
-
             <div class="chart-container" id="chartWrapper" style="display:none;">
                 <table id="dmxTable">
-                    <thead>
-                        <tr>
-                            <th>Offset</th>
-                            <th>Attribute</th>
-                            <th>MA2 Parameter</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Offset</th><th>Attribute</th><th>MA2 Parameter</th></tr></thead>
                     <tbody id="dmxBody"></tbody>
                 </table>
             </div>
@@ -138,21 +83,15 @@
             document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
         }
 
-        // --- UNIVERSAL MOBILE/DESKTOP DOWNLOAD HANDLER ---
         async function saveAndDownload(zip, filename, statusDiv, successMsg) {
             try {
                 const blob = await zip.generateAsync({type:"blob"});
                 const file = new File([blob], filename, {type: "application/zip"});
                 
-                // 1. Try Native iOS/Android Web Share (Fixes Telegram WebView Block)
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: filename,
-                        files: [file]
-                    });
+                    await navigator.share({ title: filename, files: [file] });
                     statusDiv.innerText = successMsg + "\n(Opened Save dialog)";
                 } else {
-                    // 2. Fallback to standard Anchor Download for Desktop
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -165,7 +104,6 @@
                 statusDiv.style.color = "lightgreen";
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             } catch (err) {
-                // 3. Ultimate Fallback (Base64) if WebView strictly blocks both
                 try {
                     const base64 = await zip.generateAsync({type:"base64"});
                     const a = document.createElement('a');
@@ -183,7 +121,6 @@
             }
         }
 
-        // --- TAB 1: VERSION CONVERTER LOGIC ---
         async function processFiles() {
             const fileInput = document.getElementById('fileInput');
             const versionParts = document.getElementById('versionSelect').value.split('.');
@@ -219,11 +156,16 @@
                         zip.file(file.name, text);
                         processedCount++;
                     } else if (fname.endsWith('.gz') || fname.endsWith('.show.gz')) {
-                        const decompressed = pako.inflate(new Uint8Array(arrayBuffer));
-                        let text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
+                        // CRITICAL FIX: Use ungzip to decompress, and gzip to recompress.
+                        const decompressed = pako.ungzip(new Uint8Array(arrayBuffer));
+                        let text = new TextDecoder('utf-8').decode(decompressed);
+                        
                         text = text.replace(p_major, `$1${vMaj}$2`).replace(p_minor, `$1${vMin}$2`)
                                    .replace(p_stream, `$1${vStr}$2`).replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
-                        zip.file(file.name, pako.deflate(new TextEncoder().encode(text)));
+                        
+                        // MUST be pako.gzip() to preserve the GZ headers the console requires
+                        const recompressed = pako.gzip(new TextEncoder().encode(text));
+                        zip.file(file.name, recompressed);
                         processedCount++;
                     }
                 } catch (fileErr) {
@@ -240,7 +182,6 @@
             }
         }
 
-        // --- GDTF TO MA2 ATTRIBUTE MAPPER ---
         function mapGdtfToMa2(gdtfAttr) {
             if (!gdtfAttr) return "DUMMY";
             const map = {
@@ -256,7 +197,6 @@
             return map[gdtfAttr] || gdtfAttr.toUpperCase().replace(/[^A-Z0-9_]/g, '');
         }
 
-        // --- TAB 2: GDTF PARSER & XML BUILDER ---
         async function processGDTF() {
             const fileInput = document.getElementById('gdtfInput');
             const statusDiv = document.getElementById('gdtfStatus');
