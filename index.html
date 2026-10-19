@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MA2 Toolkit: Show Converter & GDTF Inspector</title>
+    <title>MA2 Toolkit: Show Converter & GDTF</title>
     <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- JSZip for packaging outputs -->
@@ -60,7 +60,7 @@
             cursor: pointer;
         }
         button:active { background-color: #e6b400; }
-        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; }
+        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; }
         
         .chart-container {
             margin-top: 15px;
@@ -81,11 +81,11 @@
         
         <div class="tabs">
             <div class="tab active" onclick="switchTab(0)">Version Converter</div>
-            <div class="tab" onclick="switchTab(1)">GDTF Fixture & Chart</div>
+            <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
         </div>
 
+        <!-- TAB 1: SHOW & XML CONVERTER -->
         <div class="panel active" id="panel0">
-            <!-- iOS fix: accept="*/*" overrides strict MIME validation -->
             <label>Select Show (.show.gz) or XML Files</label>
             <input type="file" id="fileInput" multiple accept="*/*">
             
@@ -97,16 +97,16 @@
                 <option value="3.9.63">v3.9.63.x</option>
             </select>
             
-            <button onclick="processFiles()">CONVERT & PACK ARCHIVE</button>
+            <button onclick="processFiles()">CONVERT & SAVE ARCHIVE</button>
             <div id="status"></div>
         </div>
 
+        <!-- TAB 2: GDTF TO MA2 CONVERTER -->
         <div class="panel" id="panel1">
-            <!-- iOS fix: accept="*/*" allows custom .gdtf extensions from Apple Files -->
             <label>Select .gdtf Fixture File</label>
             <input type="file" id="gdtfInput" accept="*/*">
             
-            <button onclick="processGDTF()">PARSE GDTF & BUILD MA2 PROFILE</button>
+            <button onclick="processGDTF()">PARSE & SAVE MA2 PROFILE</button>
             <div id="gdtfStatus"></div>
             
             <div id="fixtureInfo" style="margin-top:10px; font-size:12px; display:none;">
@@ -138,6 +138,51 @@
             document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
         }
 
+        // --- UNIVERSAL MOBILE/DESKTOP DOWNLOAD HANDLER ---
+        async function saveAndDownload(zip, filename, statusDiv, successMsg) {
+            try {
+                const blob = await zip.generateAsync({type:"blob"});
+                const file = new File([blob], filename, {type: "application/zip"});
+                
+                // 1. Try Native iOS/Android Web Share (Fixes Telegram WebView Block)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: filename,
+                        files: [file]
+                    });
+                    statusDiv.innerText = successMsg + "\n(Opened Save dialog)";
+                } else {
+                    // 2. Fallback to standard Anchor Download for Desktop
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { a.remove(); window.URL.revokeObjectURL(url); }, 100);
+                    statusDiv.innerText = successMsg;
+                }
+                statusDiv.style.color = "lightgreen";
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } catch (err) {
+                // 3. Ultimate Fallback (Base64) if WebView strictly blocks both
+                try {
+                    const base64 = await zip.generateAsync({type:"base64"});
+                    const a = document.createElement('a');
+                    a.href = "data:application/zip;base64," + base64;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    statusDiv.innerText = successMsg + "\n(Saved via Base64 fallback)";
+                    statusDiv.style.color = "lightgreen";
+                } catch (fallbackErr) {
+                    statusDiv.innerText = "Download blocked by device. Try running in standard Safari/Chrome.";
+                    statusDiv.style.color = "red";
+                }
+            }
+        }
+
         // --- TAB 1: VERSION CONVERTER LOGIC ---
         async function processFiles() {
             const fileInput = document.getElementById('fileInput');
@@ -161,8 +206,8 @@
             const p_schema = /(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/g;
 
             let processedCount = 0;
-            try {
-                for (let i = 0; i < fileInput.files.length; i++) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                try {
                     const file = fileInput.files[i];
                     const arrayBuffer = await file.arrayBuffer();
                     const fname = file.name.toLowerCase();
@@ -181,23 +226,16 @@
                         zip.file(file.name, pako.deflate(new TextEncoder().encode(text)));
                         processedCount++;
                     }
+                } catch (fileErr) {
+                    console.error("Skipped unreadable file: ", fileErr);
                 }
+            }
 
-                const content = await zip.generateAsync({type:"blob"});
-                const url = window.URL.createObjectURL(content);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `MA2_Bundle_v${vMaj}.${vMin}.${vStr}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-                
-                statusDiv.innerText = `Success! Converted ${processedCount} files.`;
-                statusDiv.style.color = "lightgreen";
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            } catch (err) {
-                statusDiv.innerText = "Error: " + err.message;
+            if (processedCount > 0) {
+                const filename = `MA2_Bundle_v${vMaj}.${vMin}.${vStr}.zip`;
+                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} files.`);
+            } else {
+                statusDiv.innerText = "Error: Could not read valid .xml or .gz files.";
                 statusDiv.style.color = "red";
             }
         }
@@ -252,7 +290,6 @@
                 let ma2DmxModesXML = "";
                 let tableRows = "";
 
-                // Parse modes and construct MA2 <DMXMode> and <DMXChannels> layout
                 dmxModes.forEach((mode, modeIdx) => {
                     let modeName = mode.getAttribute("Name") || `Mode ${modeIdx + 1}`;
                     modeNames.push(modeName);
@@ -268,10 +305,8 @@
                         let gdtfAttr = logicalChan ? logicalChan.getAttribute("Attribute") : "Dummy";
                         let ma2Attr = mapGdtfToMa2(gdtfAttr);
                         
-                        // Default properties for MA2 formatting
                         channelsXML += `\n          <DMXChannel index="${chIdx}" attribute="${ma2Attr}" offset="${offsetStr}" default="0" highlight="100"/>`;
                         
-                        // Populate HTML Chart only for the first mode to prevent clutter
                         if(modeIdx === 0) {
                             tableRows += `<tr><td>${offsetStr}</td><td>${gdtfAttr}</td><td style="color:#FFC800">${ma2Attr}</td></tr>`;
                         }
@@ -284,14 +319,12 @@
       </DMXMode>`;
                 });
 
-                // Display Chart
                 document.getElementById('fxName').innerText = `Fixture: ${fxNameVal}`;
                 document.getElementById('fxModes').innerText = `Modes Built: ${modeNames.join(', ')}`;
                 document.getElementById('fixtureInfo').style.display = "block";
                 document.getElementById('dmxBody').innerHTML = tableRows;
                 document.getElementById('chartWrapper').style.display = "block";
 
-                // Construct full MA2 FixtureType XML
                 const ma2ProfileXML = `<?xml version="1.0" encoding="utf-8"?>
 <MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.61/MA.xsd" major_vers="3" minor_vers="9" stream_vers="61">
   <FixtureType index="0" name="${fxNameVal}" mode="${modeNames[0]}">
@@ -307,23 +340,10 @@
   </FixtureType>
 </MA>`;
 
-                // Zip & Download
                 const outZip = new JSZip();
                 outZip.file(`${fxNameVal}_MA2.xml`, ma2ProfileXML);
                 
-                const content = await outZip.generateAsync({type:"blob"});
-                const url = window.URL.createObjectURL(content);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fxNameVal}_MA2.zip`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-
-                statusDiv.innerText = `Success! Converted ${modeNames.length} modes.`;
-                statusDiv.style.color = "lightgreen";
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                await saveAndDownload(outZip, `${fxNameVal}_MA2.zip`, statusDiv, `Success! Converted ${modeNames.length} modes.`);
 
             } catch (err) {
                 statusDiv.innerText = "GDTF Parse Error: " + err.message;
