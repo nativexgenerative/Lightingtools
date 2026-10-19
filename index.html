@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MA2 Toolkit: Show & GDTF Converter</title>
+    <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- JSZip for packaging outputs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Pako for .show.gz compression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
     <style>
@@ -13,7 +16,7 @@
         .container { background-color: var(--tg-theme-secondary-bg-color, #252526); padding: 15px; border-radius: 8px; border: 1px solid #FFC800; max-width: 520px; margin: auto; }
         h2 { color: #FFC800; text-align: center; margin-top: 0; font-size: 18px; }
         .tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #444; }
-        .tab { flex: 1; padding: 10px; text-align: center; background: #1A1A1B; color: #888; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: #1A1A1B; color: #888; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
         .tab.active { background: #FFC800; color: #000; border-top-left-radius: 4px; border-top-right-radius: 4px; }
         .panel { display: none; }
         .panel.active { display: block; }
@@ -26,7 +29,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
         th, td { padding: 6px; border-bottom: 1px solid #222; }
         th { background: #222; color: #FFC800; position: sticky; top: 0; }
-        .badge { background: #FFC800; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+        .badge { background: #FFC800; color: #000; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -35,13 +38,13 @@
         <h2>grandMA2 TOOLKIT</h2>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(0)">Show & XML Converter</div>
+            <div class="tab active" onclick="switchTab(0)">Show Converter</div>
             <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
         </div>
 
-        <!-- TAB 1: SHOW (.show.gz) & XML CONVERTER -->
+        <!-- TAB 1: SHOW & XML CONVERTER -->
         <div class="panel active" id="panel0">
-            <label>Select Show Files (.show.gz / .gz) or XMLs <span class="badge">GZ ACTIVE</span></label>
+            <label>Select Showfile (.show.gz) or XMLs <span class="badge">BINARY SAFE</span></label>
             <input type="file" id="fileInput" multiple accept="*/*">
             
             <label>Target grandMA2 Version</label>
@@ -52,7 +55,7 @@
                 <option value="3.9.63">v3.9.63.x</option>
             </select>
             
-            <button onclick="processFiles()">CONVERT & SAVE ARCHIVE</button>
+            <button onclick="processFiles()">CONVERT & SAVE SHOW</button>
             <div id="status"></div>
         </div>
 
@@ -87,19 +90,7 @@
             document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
         }
 
-        // --- CORE VERSION REWRITE ENGINE ---
-        function updateMA2VersionString(text, vMaj, vMin, vStr) {
-            let updated = text;
-            updated = updated.replace(/(major_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vMaj}${p2}`);
-            updated = updated.replace(/(minor_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vMin}${p2}`);
-            updated = updated.replace(/(stream_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vStr}${p2}`);
-            updated = updated.replace(/(build_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vStr}${p2}`);
-            updated = updated.replace(/(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/gi, 
-                (m, p1, p2) => `${p1}${vMaj}.${vMin}.${vStr}${p2}`);
-            return updated;
-        }
-
-        // --- DOWNLOAD AND SHARE CONTROLLER ---
+        // --- DOWNLOAD / SHARE HANDLER ---
         async function saveAndDownload(zip, filename, statusDiv, successMsg) {
             try {
                 const blob = await zip.generateAsync({type:"blob"});
@@ -107,7 +98,7 @@
                 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({ title: filename, files: [file] });
-                    statusDiv.innerText = successMsg + "\n(Saved to device)";
+                    statusDiv.innerText = successMsg + "\n(Saved to device via Share Menu)";
                 } else {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -126,14 +117,26 @@
             }
         }
 
-        // --- SHOW (.SHOW.GZ) & XML PROCESSING ---
+        // --- BINARY-SAFE VERSION REWRITE ENGINE ---
+        // Uses callback functions to prevent Javascript $13 capture group corruption
+        function updateMA2VersionString(text, vMaj, vMin, vStr) {
+            let updated = text;
+            updated = updated.replace(/(major_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vMaj + p2);
+            updated = updated.replace(/(minor_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vMin + p2);
+            updated = updated.replace(/(stream_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vStr + p2);
+            updated = updated.replace(/(build_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vStr + p2);
+            updated = updated.replace(/(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/gi, 
+                (m, p1, p2) => p1 + vMaj + "." + vMin + "." + vStr + p2);
+            return updated;
+        }
+
         async function processFiles() {
             const fileInput = document.getElementById('fileInput');
             const versionParts = document.getElementById('versionSelect').value.split('.');
             const statusDiv = document.getElementById('status');
             
             if (fileInput.files.length === 0) {
-                statusDiv.innerText = "Error: Please select .show.gz or .xml files first.";
+                statusDiv.innerText = "Error: Please select files first.";
                 statusDiv.style.color = "red";
                 return;
             }
@@ -142,7 +145,7 @@
             const zip = new JSZip();
             let processedCount = 0;
 
-            statusDiv.innerText = "Decompressing and rewriting GZ show headers...";
+            statusDiv.innerText = "Processing files securely...";
             statusDiv.style.color = "#FFC800";
 
             for (let i = 0; i < fileInput.files.length; i++) {
@@ -153,41 +156,49 @@
                     const fnameLower = fname.toLowerCase();
 
                     if (fnameLower.endsWith('.gz') || fnameLower.endsWith('.show') || fnameLower.endsWith('.show.gz')) {
-                        // 1. Decompress GZIP payload
-                        let decompressed;
-                        try {
-                            decompressed = pako.ungzip(new Uint8Array(arrayBuffer));
-                        } catch (e) {
-                            decompressed = pako.inflate(new Uint8Array(arrayBuffer));
+                        // 1. Decompress
+                        let decompressedBytes;
+                        try { decompressedBytes = pako.ungzip(new Uint8Array(arrayBuffer)); } 
+                        catch (e) { decompressedBytes = pako.inflate(new Uint8Array(arrayBuffer)); }
+                        
+                        // 2. Convert to binary string chunk-by-chunk to PRESERVE all binary data
+                        let binaryStr = "";
+                        const chunkSize = 60000;
+                        for (let j = 0; j < decompressedBytes.length; j += chunkSize) {
+                            binaryStr += String.fromCharCode.apply(null, decompressedBytes.subarray(j, j + chunkSize));
                         }
-                        
-                        // 2. Decode text stream
-                        let text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
-                        
-                        // 3. Perform version signature replacement
-                        let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
-                        
-                        // 4. Re-compress back into valid GZIP show file binary format
-                        const recompressed = pako.gzip(new TextEncoder().encode(convertedText), { level: 9 });
+
+                        // 3. Perform version string replacements on the safe binary string
+                        let convertedStr = updateMA2VersionString(binaryStr, vMaj, vMin, vStr);
+
+                        // 4. Convert perfectly back to Uint8Array bytes
+                        const newBytes = new Uint8Array(convertedStr.length);
+                        for (let j = 0; j < convertedStr.length; j++) {
+                            newBytes[j] = convertedStr.charCodeAt(j) & 0xFF;
+                        }
+
+                        // 5. Re-compress strictly as GZIP (which the console requires)
+                        const recompressed = pako.gzip(newBytes, { level: 9 });
                         zip.file(fname, recompressed);
                         processedCount++;
 
                     } else if (fnameLower.endsWith('.xml')) {
+                        // XMLs are pure text, standard TextDecoder is safe here
                         let text = new TextDecoder('utf-8').decode(arrayBuffer);
                         let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
                         zip.file(fname, convertedText);
                         processedCount++;
                     }
                 } catch (fileErr) {
-                    console.error("Error processing file " + fileInput.files[i].name, fileErr);
+                    console.error(`Failed on ${fileInput.files[i].name}:`, fileErr);
                 }
             }
 
             if (processedCount > 0) {
-                const filename = `MA2_Showfiles_v${vMaj}.${vMin}.${vStr}.zip`;
-                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} file(s) to v${vMaj}.${vMin}.${vStr}`);
+                const filename = `MA2_Show_v${vMaj}.${vMin}.${vStr}.zip`;
+                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} file(s) to v${vMaj}.${vMin}.${vStr}.`);
             } else {
-                statusDiv.innerText = "Error: Could not read or convert the selected files.";
+                statusDiv.innerText = "Error: Selected files could not be read or converted.";
                 statusDiv.style.color = "red";
             }
         }
