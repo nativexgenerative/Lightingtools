@@ -107,8 +107,9 @@
 
         <!-- TAB 2: GDTF TO MA2 CONVERTER & CHART INSPECTOR -->
         <div class="panel" id="panel1">
+            <!-- Fixed accept filter to reliably catch .gdtf files on mobile and desktop -->
             <label>Select .gdtf Fixture File</label>
-            <input type="file" id="gdtfInput" accept=".gdtf,.zip">
+            <input type="file" id="gdtfInput" accept=".gdtf,.zip,application/zip,application/x-zip-compressed">
             
             <button onclick="processGDTF()">PARSE GDTF & BUILD MA2 PROFILE</button>
             <div id="gdtfStatus"></div>
@@ -176,8 +177,9 @@
                 for (let i = 0; i < fileInput.files.length; i++) {
                     const file = fileInput.files[i];
                     const arrayBuffer = await file.arrayBuffer();
+                    const fname = file.name.toLowerCase();
 
-                    if (file.name.toLowerCase().endswith('.xml')) {
+                    if (fname.endsWith('.xml')) {
                         const decoder = new TextDecoder('utf-8');
                         let text = decoder.decode(arrayBuffer);
                         text = text.replace(p_major, `$1${vMaj}$2`)
@@ -186,7 +188,7 @@
                                    .replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
                         zip.file(file.name, text);
                         processedCount++;
-                    } else if (file.name.toLowerCase().endsWith('.gz')) {
+                    } else if (fname.endsWith('.gz') || fname.endsWith('.show.gz')) {
                         const decompressed = pako.inflate(new Uint8Array(arrayBuffer));
                         const text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
                         let modified = text.replace(p_major, `$1${vMaj}$2`)
@@ -239,7 +241,7 @@
                 // GDTF stores its core metadata in description.xml
                 let descFile = zipContent.file("description.xml");
                 if (!descFile) {
-                    throw new Error("Invalid GDTF: description.xml missing.");
+                    throw new Error("Invalid GDTF: description.xml missing inside archive.");
                 }
 
                 const xmlText = await descFile.async("text");
