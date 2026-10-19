@@ -62,7 +62,6 @@
         button:active { background-color: #e6b400; }
         #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; }
         
-        /* DMX Chart Table Styles */
         .chart-container {
             margin-top: 15px;
             max-height: 200px;
@@ -73,7 +72,6 @@
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
         th, td { padding: 6px; border-bottom: 1px solid #222; }
         th { background: #222; color: #FFC800; position: sticky; top: 0; }
-        .note { font-size: 11px; color: #aaa; margin-top: 6px; line-height: 1.3; }
     </style>
 </head>
 <body>
@@ -81,16 +79,15 @@
     <div class="container">
         <h2>grandMA2 TOOLKIT</h2>
         
-        <!-- Navigation Tabs -->
         <div class="tabs">
             <div class="tab active" onclick="switchTab(0)">Version Converter</div>
             <div class="tab" onclick="switchTab(1)">GDTF Fixture & Chart</div>
         </div>
 
-        <!-- TAB 1: SHOW & XML CONVERTER -->
         <div class="panel active" id="panel0">
+            <!-- iOS fix: accept="*/*" overrides strict MIME validation -->
             <label>Select Show (.show.gz) or XML Files</label>
-            <input type="file" id="fileInput" multiple accept=".xml,.gz">
+            <input type="file" id="fileInput" multiple accept="*/*">
             
             <label>Target grandMA2 Version</label>
             <select id="versionSelect">
@@ -102,14 +99,12 @@
             
             <button onclick="processFiles()">CONVERT & PACK ARCHIVE</button>
             <div id="status"></div>
-            <div class="note">ℹ️ Supports batch processing for exported XML pools and full show archives.</div>
         </div>
 
-        <!-- TAB 2: GDTF TO MA2 CONVERTER & CHART INSPECTOR -->
         <div class="panel" id="panel1">
-            <!-- Fixed accept filter to reliably catch .gdtf files on mobile and desktop -->
+            <!-- iOS fix: accept="*/*" allows custom .gdtf extensions from Apple Files -->
             <label>Select .gdtf Fixture File</label>
-            <input type="file" id="gdtfInput" accept=".gdtf,.zip,application/zip,application/x-zip-compressed">
+            <input type="file" id="gdtfInput" accept="*/*">
             
             <button onclick="processGDTF()">PARSE GDTF & BUILD MA2 PROFILE</button>
             <div id="gdtfStatus"></div>
@@ -123,9 +118,9 @@
                 <table id="dmxTable">
                     <thead>
                         <tr>
-                            <th>Channel</th>
+                            <th>Offset</th>
                             <th>Attribute</th>
-                            <th>Footprint</th>
+                            <th>MA2 Parameter</th>
                         </tr>
                     </thead>
                     <tbody id="dmxBody"></tbody>
@@ -139,12 +134,8 @@
         tg.expand();
 
         function switchTab(index) {
-            document.querySelectorAll('.tab').forEach((t, i) => {
-                t.classList.toggle('active', i === index);
-            });
-            document.querySelectorAll('.panel').forEach((p, i) => {
-                p.classList.toggle('active', i === index);
-            });
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
+            document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
         }
 
         // --- TAB 1: VERSION CONVERTER LOGIC ---
@@ -159,10 +150,7 @@
                 return;
             }
 
-            const vMaj = versionParts[0];
-            const vMin = versionParts[1];
-            const vStr = versionParts[2];
-
+            const [vMaj, vMin, vStr] = versionParts;
             statusDiv.innerText = "Processing files...";
             statusDiv.style.color = "#FFC800";
 
@@ -180,22 +168,17 @@
                     const fname = file.name.toLowerCase();
 
                     if (fname.endsWith('.xml')) {
-                        const decoder = new TextDecoder('utf-8');
-                        let text = decoder.decode(arrayBuffer);
-                        text = text.replace(p_major, `$1${vMaj}$2`)
-                                   .replace(p_minor, `$1${vMin}$2`)
-                                   .replace(p_stream, `$1${vStr}$2`)
-                                   .replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
+                        let text = new TextDecoder('utf-8').decode(arrayBuffer);
+                        text = text.replace(p_major, `$1${vMaj}$2`).replace(p_minor, `$1${vMin}$2`)
+                                   .replace(p_stream, `$1${vStr}$2`).replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
                         zip.file(file.name, text);
                         processedCount++;
                     } else if (fname.endsWith('.gz') || fname.endsWith('.show.gz')) {
                         const decompressed = pako.inflate(new Uint8Array(arrayBuffer));
-                        const text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
-                        let modified = text.replace(p_major, `$1${vMaj}$2`)
-                                           .replace(p_minor, `$1${vMin}$2`)
-                                           .replace(p_stream, `$1${vStr}$2`)
-                                           .replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
-                        zip.file(file.name, pako.deflate(new TextEncoder().encode(modified)));
+                        let text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
+                        text = text.replace(p_major, `$1${vMaj}$2`).replace(p_minor, `$1${vMin}$2`)
+                                   .replace(p_stream, `$1${vStr}$2`).replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
+                        zip.file(file.name, pako.deflate(new TextEncoder().encode(text)));
                         processedCount++;
                     }
                 }
@@ -219,7 +202,23 @@
             }
         }
 
-        // --- TAB 2: GDTF PARSER & DMX CHART INSPECTOR ---
+        // --- GDTF TO MA2 ATTRIBUTE MAPPER ---
+        function mapGdtfToMa2(gdtfAttr) {
+            if (!gdtfAttr) return "DUMMY";
+            const map = {
+                "Dimmer": "DIM", "Pan": "PAN", "Tilt": "TILT",
+                "ColorAdd_R": "COLORRGB1", "ColorAdd_G": "COLORRGB2", 
+                "ColorAdd_B": "COLORRGB3", "ColorAdd_W": "COLORRGB4",
+                "ColorAdd_C": "COLORRGB5", "ColorAdd_M": "COLORRGB6", "ColorAdd_Y": "COLORRGB7",
+                "Zoom": "ZOOM", "Focus": "FOCUS", "Iris": "IRIS",
+                "Gobo1": "GOBO1", "Gobo1Pos": "GOBO1_POS", "Gobo2": "GOBO2",
+                "Shutter": "SHUTTER", "Strobe": "SHUTTER",
+                "ColorMacro": "COLOR1", "CTO": "CTO", "CTC": "CTC"
+            };
+            return map[gdtfAttr] || gdtfAttr.toUpperCase().replace(/[^A-Z0-9_]/g, '');
+        }
+
+        // --- TAB 2: GDTF PARSER & XML BUILDER ---
         async function processGDTF() {
             const fileInput = document.getElementById('gdtfInput');
             const statusDiv = document.getElementById('gdtfStatus');
@@ -230,7 +229,7 @@
                 return;
             }
 
-            statusDiv.innerText = "Reading GDTF structure...";
+            statusDiv.innerText = "Building MA2 XML Profile...";
             statusDiv.style.color = "#FFC800";
 
             try {
@@ -238,74 +237,91 @@
                 const zip = new JSZip();
                 const zipContent = await zip.loadAsync(file);
 
-                // GDTF stores its core metadata in description.xml
                 let descFile = zipContent.file("description.xml");
-                if (!descFile) {
-                    throw new Error("Invalid GDTF: description.xml missing inside archive.");
-                }
+                if (!descFile) throw new Error("description.xml missing inside archive.");
 
                 const xmlText = await descFile.async("text");
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
-                // Extract Fixture Metadata
                 const fixtureType = xmlDoc.querySelector("FixtureType");
-                const fxNameVal = fixtureType ? (fixtureType.getAttribute("Name") || fixtureType.getAttribute("LongName") || "Unknown Fixture") : file.name;
+                const fxNameVal = fixtureType ? (fixtureType.getAttribute("Name") || fixtureType.getAttribute("LongName")) : file.name.split('.')[0];
                 
-                // Extract DMX Modes & Channels
                 const dmxModes = xmlDoc.querySelectorAll("DMXMode");
-                let channelsList = [];
                 let modeNames = [];
+                let ma2DmxModesXML = "";
+                let tableRows = "";
 
-                dmxModes.forEach(mode => {
-                    modeNames.push(mode.getAttribute("Name"));
+                // Parse modes and construct MA2 <DMXMode> and <DMXChannels> layout
+                dmxModes.forEach((mode, modeIdx) => {
+                    let modeName = mode.getAttribute("Name") || `Mode ${modeIdx + 1}`;
+                    modeNames.push(modeName);
+                    
+                    let channelsXML = "";
                     const dmxChannels = mode.querySelectorAll("DMXChannel");
-                    dmxChannels.forEach((ch, idx) => {
-                        const coarse = ch.getAttribute("DMXBreak") || "1";
-                        const logicalChan = ch.querySelector("LogicalChannel");
-                        const attr = logicalChan ? logicalChan.getAttribute("Attribute") : "No Attribute";
-                        channelsList.push({ index: idx + 1, attribute: attr, dmxBreak: coarse });
+                    
+                    dmxChannels.forEach((ch, chIdx) => {
+                        let offsetStr = ch.getAttribute("Offset") || "";
+                        if (!offsetStr || offsetStr === "None") return;
+                        
+                        let logicalChan = ch.querySelector("LogicalChannel");
+                        let gdtfAttr = logicalChan ? logicalChan.getAttribute("Attribute") : "Dummy";
+                        let ma2Attr = mapGdtfToMa2(gdtfAttr);
+                        
+                        // Default properties for MA2 formatting
+                        channelsXML += `\n          <DMXChannel index="${chIdx}" attribute="${ma2Attr}" offset="${offsetStr}" default="0" highlight="100"/>`;
+                        
+                        // Populate HTML Chart only for the first mode to prevent clutter
+                        if(modeIdx === 0) {
+                            tableRows += `<tr><td>${offsetStr}</td><td>${gdtfAttr}</td><td style="color:#FFC800">${ma2Attr}</td></tr>`;
+                        }
                     });
+
+                    ma2DmxModesXML += `
+      <DMXMode index="${modeIdx}" name="${modeName}">
+        <DMXChannels>${channelsXML}
+        </DMXChannels>
+      </DMXMode>`;
                 });
 
-                // Display Fixture UI Info
+                // Display Chart
                 document.getElementById('fxName').innerText = `Fixture: ${fxNameVal}`;
-                document.getElementById('fxModes').innerText = `Available DMX Modes: ${modeNames.join(', ') || 'Standard'}`;
+                document.getElementById('fxModes').innerText = `Modes Built: ${modeNames.join(', ')}`;
                 document.getElementById('fixtureInfo').style.display = "block";
-
-                // Populate DMX Chart Table
-                const tbody = document.getElementById('dmxBody');
-                tbody.innerHTML = "";
-                channelsList.forEach(item => {
-                    const row = `<tr><td>CH ${item.index}</td><td>${item.attribute}</td><td>Break ${item.dmxBreak}</td></tr>`;
-                    tbody.innerHTML += row;
-                });
+                document.getElementById('dmxBody').innerHTML = tableRows;
                 document.getElementById('chartWrapper').style.display = "block";
 
-                // Build an MA2 XML-compatible Fixture profile wrapper for download
-                const ma2ProfileXML = `<MA major_vers="3" minor_vers="9" stream_vers="61" dt="2026-10-19">
-  <FixtureType Name="${fxNameVal}">
-    <DMXModes>
-      <DMXMode Name="${modeNames[0] || 'Default'}">
-        <!-- Parsed from GDTF container -->
-      </DMXMode>
+                // Construct full MA2 FixtureType XML
+                const ma2ProfileXML = `<?xml version="1.0" encoding="utf-8"?>
+<MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.61/MA.xsd" major_vers="3" minor_vers="9" stream_vers="61">
+  <FixtureType index="0" name="${fxNameVal}" mode="${modeNames[0]}">
+    <Info>Auto-converted from GDTF</Info>
+    <Modules>
+      <Module index="0" name="Main" class="Headmover" beamtype="Wash" />
+    </Modules>
+    <Instances>
+      <Instance index="0" module_index="0" />
+    </Instances>
+    <DMXModes>${ma2DmxModesXML}
     </DMXModes>
   </FixtureType>
 </MA>`;
 
+                // Zip & Download
                 const outZip = new JSZip();
-                outZip.file(`${fxNameVal}_MA2_Profile.xml`, ma2ProfileXML);
+                outZip.file(`${fxNameVal}_MA2.xml`, ma2ProfileXML);
                 
                 const content = await outZip.generateAsync({type:"blob"});
                 const url = window.URL.createObjectURL(content);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${fxNameVal}_MA2_Converted.zip`;
+                a.download = `${fxNameVal}_MA2.zip`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+                window.URL.revokeObjectURL(url);
 
-                statusDiv.innerText = `Success! Parsed GDTF and generated MA2 Profile package.`;
+                statusDiv.innerText = `Success! Converted ${modeNames.length} modes.`;
                 statusDiv.style.color = "lightgreen";
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
