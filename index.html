@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MA2 Toolkit: Show Converter & GDTF</title>
+    <title>MA2 Toolkit: XML Converter & GDTF</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -21,7 +21,8 @@
         select, input[type="file"] { width: 100%; padding: 8px; margin-top: 4px; background: #111; color: #FFC800; border: 1px solid #444; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
         button { width: 100%; padding: 12px; margin-top: 15px; background-color: #FFC800; color: #000; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; }
         button:active { background-color: #e6b400; }
-        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; }
+        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; word-break: break-all; }
+        .warning-box { background: #2a1f00; border: 1px solid #FFC800; color: #FFD700; padding: 8px; font-size: 11px; margin-top: 10px; border-radius: 4px; line-height: 1.4; }
         .chart-container { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #444; background: #111; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
         th, td { padding: 6px; border-bottom: 1px solid #222; }
@@ -34,12 +35,13 @@
         <h2>grandMA2 TOOLKIT</h2>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(0)">Version Converter</div>
+            <div class="tab active" onclick="switchTab(0)">XML Converter</div>
             <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
         </div>
 
+        <!-- TAB 1: EXPORTED XML CONVERTER -->
         <div class="panel active" id="panel0">
-            <label>Select Show (.show.gz) or XML Files</label>
+            <label>Select Exported XML Files (.xml)</label>
             <input type="file" id="fileInput" multiple accept="*/*">
             
             <label>Target grandMA2 Version</label>
@@ -50,21 +52,28 @@
                 <option value="3.9.63">v3.9.63.x</option>
             </select>
             
-            <button onclick="processFiles()">CONVERT & SAVE ARCHIVE</button>
+            <button onclick="processFiles()">CONVERT XML POOLS</button>
             <div id="status"></div>
+            
+            <div class="warning-box">
+                ⚠️ <b>Note on Full Show (.show.gz) Files:</b><br/>
+                Binary showfiles cannot be converted by header manipulation and will load as an empty show. To move full show files, use <b>Partial Show Read (PSR)</b> on the console.
+            </div>
         </div>
 
+        <!-- TAB 2: GDTF TO MA2 CONVERTER -->
         <div class="panel" id="panel1">
             <label>Select .gdtf Fixture File</label>
             <input type="file" id="gdtfInput" accept="*/*">
             
-            <button onclick="processGDTF()">PARSE & SAVE MA2 PROFILE</button>
+            <button onclick="processGDTF()">PARSE & BUILD MA2 PROFILE</button>
             <div id="gdtfStatus"></div>
             
             <div id="fixtureInfo" style="margin-top:10px; font-size:12px; display:none;">
                 <b id="fxName" style="color:#FFC800;"></b><br/>
                 <span id="fxModes"></span>
             </div>
+
             <div class="chart-container" id="chartWrapper" style="display:none;">
                 <table id="dmxTable">
                     <thead><tr><th>Offset</th><th>Attribute</th><th>MA2 Parameter</th></tr></thead>
@@ -76,11 +85,22 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
+        if (tg) tg.expand();
 
         function switchTab(index) {
             document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
             document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
+        }
+
+        function updateMA2VersionString(text, vMaj, vMin, vStr) {
+            let updated = text;
+            updated = updated.replace(/(major_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vMaj}${p2}`);
+            updated = updated.replace(/(minor_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vMin}${p2}`);
+            updated = updated.replace(/(stream_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vStr}${p2}`);
+            updated = updated.replace(/(build_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vStr}${p2}`);
+            updated = updated.replace(/(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/gi, 
+                (m, p1, p2) => `${p1}${vMaj}.${vMin}.${vStr}${p2}`);
+            return updated;
         }
 
         async function saveAndDownload(zip, filename, statusDiv, successMsg) {
@@ -90,7 +110,7 @@
                 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({ title: filename, files: [file] });
-                    statusDiv.innerText = successMsg + "\n(Opened Save dialog)";
+                    statusDiv.innerText = successMsg + "\n(Saved to device)";
                 } else {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -102,22 +122,10 @@
                     statusDiv.innerText = successMsg;
                 }
                 statusDiv.style.color = "lightgreen";
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             } catch (err) {
-                try {
-                    const base64 = await zip.generateAsync({type:"base64"});
-                    const a = document.createElement('a');
-                    a.href = "data:application/zip;base64," + base64;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    statusDiv.innerText = successMsg + "\n(Saved via Base64 fallback)";
-                    statusDiv.style.color = "lightgreen";
-                } catch (fallbackErr) {
-                    statusDiv.innerText = "Download blocked by device. Try running in standard Safari/Chrome.";
-                    statusDiv.style.color = "red";
-                }
+                statusDiv.innerText = "Download error: " + err.message;
+                statusDiv.style.color = "red";
             }
         }
 
@@ -127,57 +135,49 @@
             const statusDiv = document.getElementById('status');
             
             if (fileInput.files.length === 0) {
-                statusDiv.innerText = "Error: Please select files first.";
+                statusDiv.innerText = "Error: Please select exported XML files first.";
                 statusDiv.style.color = "red";
                 return;
             }
 
             const [vMaj, vMin, vStr] = versionParts;
-            statusDiv.innerText = "Processing files...";
+            const zip = new JSZip();
+            let processedCount = 0;
+            let skippedShowGz = false;
+
+            statusDiv.innerText = "Processing XML pool files...";
             statusDiv.style.color = "#FFC800";
 
-            const zip = new JSZip();
-            const p_major = /(major_vers=")\d+(")/g;
-            const p_minor = /(minor_vers=")\d+(")/g;
-            const p_stream = /(stream_vers=")\d+(")/g;
-            const p_schema = /(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/g;
-
-            let processedCount = 0;
             for (let i = 0; i < fileInput.files.length; i++) {
-                try {
-                    const file = fileInput.files[i];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const fname = file.name.toLowerCase();
+                const file = fileInput.files[i];
+                const fnameLower = file.name.toLowerCase();
 
-                    if (fname.endsWith('.xml')) {
-                        let text = new TextDecoder('utf-8').decode(arrayBuffer);
-                        text = text.replace(p_major, `$1${vMaj}$2`).replace(p_minor, `$1${vMin}$2`)
-                                   .replace(p_stream, `$1${vStr}$2`).replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
-                        zip.file(file.name, text);
-                        processedCount++;
-                    } else if (fname.endsWith('.gz') || fname.endsWith('.show.gz')) {
-                        // CRITICAL FIX: Use ungzip to decompress, and gzip to recompress.
-                        const decompressed = pako.ungzip(new Uint8Array(arrayBuffer));
-                        let text = new TextDecoder('utf-8').decode(decompressed);
-                        
-                        text = text.replace(p_major, `$1${vMaj}$2`).replace(p_minor, `$1${vMin}$2`)
-                                   .replace(p_stream, `$1${vStr}$2`).replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
-                        
-                        // MUST be pako.gzip() to preserve the GZ headers the console requires
-                        const recompressed = pako.gzip(new TextEncoder().encode(text));
-                        zip.file(file.name, recompressed);
-                        processedCount++;
-                    }
-                } catch (fileErr) {
-                    console.error("Skipped unreadable file: ", fileErr);
+                if (fnameLower.endsWith('.gz') || fnameLower.endsWith('.show')) {
+                    skippedShowGz = true;
+                    continue;
+                }
+
+                if (fnameLower.endsWith('.xml')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    let text = new TextDecoder('utf-8').decode(arrayBuffer);
+                    let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
+                    zip.file(file.name, convertedText);
+                    processedCount++;
                 }
             }
 
             if (processedCount > 0) {
-                const filename = `MA2_Bundle_v${vMaj}.${vMin}.${vStr}.zip`;
-                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} files.`);
+                const filename = `MA2_XML_Pools_v${vMaj}.${vMin}.${vStr}.zip`;
+                let msg = `Success! Converted ${processedCount} XML file(s) to v${vMaj}.${vMin}.${vStr}.`;
+                if (skippedShowGz) {
+                    msg += "\n⚠️ Skipped .show.gz files. Use PSR on console for full shows.";
+                }
+                await saveAndDownload(zip, filename, statusDiv, msg);
+            } else if (skippedShowGz) {
+                statusDiv.innerText = "Error: .show.gz files cannot be downgraded via XML converter.\nUse Partial Show Read (PSR) on the console for binary show files.";
+                statusDiv.style.color = "red";
             } else {
-                statusDiv.innerText = "Error: Could not read valid .xml or .gz files.";
+                statusDiv.innerText = "Error: Please select valid exported grandMA2 .xml files.";
                 statusDiv.style.color = "red";
             }
         }
@@ -207,7 +207,7 @@
                 return;
             }
 
-            statusDiv.innerText = "Building MA2 XML Profile...";
+            statusDiv.innerText = "Parsing GDTF structure...";
             statusDiv.style.color = "#FFC800";
 
             try {
@@ -283,7 +283,7 @@
                 const outZip = new JSZip();
                 outZip.file(`${fxNameVal}_MA2.xml`, ma2ProfileXML);
                 
-                await saveAndDownload(outZip, `${fxNameVal}_MA2.zip`, statusDiv, `Success! Converted ${modeNames.length} modes.`);
+                await saveAndDownload(outZip, `${fxNameVal}_MA2.zip`, statusDiv, `Success! Built MA2 fixture profile.`);
 
             } catch (err) {
                 statusDiv.innerText = "GDTF Parse Error: " + err.message;
