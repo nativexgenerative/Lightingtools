@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MA2 Toolkit: XML Converter & GDTF</title>
+    <title>MA2 Toolkit: Show & GDTF Converter</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -22,11 +22,11 @@
         button { width: 100%; padding: 12px; margin-top: 15px; background-color: #FFC800; color: #000; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; }
         button:active { background-color: #e6b400; }
         #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; word-break: break-all; }
-        .warning-box { background: #2a1f00; border: 1px solid #FFC800; color: #FFD700; padding: 8px; font-size: 11px; margin-top: 10px; border-radius: 4px; line-height: 1.4; }
         .chart-container { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #444; background: #111; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
         th, td { padding: 6px; border-bottom: 1px solid #222; }
         th { background: #222; color: #FFC800; position: sticky; top: 0; }
+        .badge { background: #FFC800; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -35,13 +35,13 @@
         <h2>grandMA2 TOOLKIT</h2>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(0)">XML Converter</div>
+            <div class="tab active" onclick="switchTab(0)">Show & XML Converter</div>
             <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
         </div>
 
-        <!-- TAB 1: EXPORTED XML CONVERTER -->
+        <!-- TAB 1: SHOW (.show.gz) & XML CONVERTER -->
         <div class="panel active" id="panel0">
-            <label>Select Exported XML Files (.xml)</label>
+            <label>Select Show Files (.show.gz / .gz) or XMLs <span class="badge">GZ ACTIVE</span></label>
             <input type="file" id="fileInput" multiple accept="*/*">
             
             <label>Target grandMA2 Version</label>
@@ -52,13 +52,8 @@
                 <option value="3.9.63">v3.9.63.x</option>
             </select>
             
-            <button onclick="processFiles()">CONVERT XML POOLS</button>
+            <button onclick="processFiles()">CONVERT & SAVE ARCHIVE</button>
             <div id="status"></div>
-            
-            <div class="warning-box">
-                ⚠️ <b>Note on Full Show (.show.gz) Files:</b><br/>
-                Binary showfiles cannot be converted by header manipulation and will load as an empty show. To move full show files, use <b>Partial Show Read (PSR)</b> on the console.
-            </div>
         </div>
 
         <!-- TAB 2: GDTF TO MA2 CONVERTER -->
@@ -66,7 +61,7 @@
             <label>Select .gdtf Fixture File</label>
             <input type="file" id="gdtfInput" accept="*/*">
             
-            <button onclick="processGDTF()">PARSE & BUILD MA2 PROFILE</button>
+            <button onclick="processGDTF()">PARSE & SAVE MA2 PROFILE</button>
             <div id="gdtfStatus"></div>
             
             <div id="fixtureInfo" style="margin-top:10px; font-size:12px; display:none;">
@@ -92,6 +87,7 @@
             document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
         }
 
+        // --- CORE VERSION REWRITE ENGINE ---
         function updateMA2VersionString(text, vMaj, vMin, vStr) {
             let updated = text;
             updated = updated.replace(/(major_vers=["'])\d+(["'])/gi, (m, p1, p2) => `${p1}${vMaj}${p2}`);
@@ -103,6 +99,7 @@
             return updated;
         }
 
+        // --- DOWNLOAD AND SHARE CONTROLLER ---
         async function saveAndDownload(zip, filename, statusDiv, successMsg) {
             try {
                 const blob = await zip.generateAsync({type:"blob"});
@@ -129,13 +126,14 @@
             }
         }
 
+        // --- SHOW (.SHOW.GZ) & XML PROCESSING ---
         async function processFiles() {
             const fileInput = document.getElementById('fileInput');
             const versionParts = document.getElementById('versionSelect').value.split('.');
             const statusDiv = document.getElementById('status');
             
             if (fileInput.files.length === 0) {
-                statusDiv.innerText = "Error: Please select exported XML files first.";
+                statusDiv.innerText = "Error: Please select .show.gz or .xml files first.";
                 statusDiv.style.color = "red";
                 return;
             }
@@ -143,45 +141,58 @@
             const [vMaj, vMin, vStr] = versionParts;
             const zip = new JSZip();
             let processedCount = 0;
-            let skippedShowGz = false;
 
-            statusDiv.innerText = "Processing XML pool files...";
+            statusDiv.innerText = "Decompressing and rewriting GZ show headers...";
             statusDiv.style.color = "#FFC800";
 
             for (let i = 0; i < fileInput.files.length; i++) {
-                const file = fileInput.files[i];
-                const fnameLower = file.name.toLowerCase();
-
-                if (fnameLower.endsWith('.gz') || fnameLower.endsWith('.show')) {
-                    skippedShowGz = true;
-                    continue;
-                }
-
-                if (fnameLower.endsWith('.xml')) {
+                try {
+                    const file = fileInput.files[i];
                     const arrayBuffer = await file.arrayBuffer();
-                    let text = new TextDecoder('utf-8').decode(arrayBuffer);
-                    let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
-                    zip.file(file.name, convertedText);
-                    processedCount++;
+                    const fname = file.name;
+                    const fnameLower = fname.toLowerCase();
+
+                    if (fnameLower.endsWith('.gz') || fnameLower.endsWith('.show') || fnameLower.endsWith('.show.gz')) {
+                        // 1. Decompress GZIP payload
+                        let decompressed;
+                        try {
+                            decompressed = pako.ungzip(new Uint8Array(arrayBuffer));
+                        } catch (e) {
+                            decompressed = pako.inflate(new Uint8Array(arrayBuffer));
+                        }
+                        
+                        // 2. Decode text stream
+                        let text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
+                        
+                        // 3. Perform version signature replacement
+                        let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
+                        
+                        // 4. Re-compress back into valid GZIP show file binary format
+                        const recompressed = pako.gzip(new TextEncoder().encode(convertedText), { level: 9 });
+                        zip.file(fname, recompressed);
+                        processedCount++;
+
+                    } else if (fnameLower.endsWith('.xml')) {
+                        let text = new TextDecoder('utf-8').decode(arrayBuffer);
+                        let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
+                        zip.file(fname, convertedText);
+                        processedCount++;
+                    }
+                } catch (fileErr) {
+                    console.error("Error processing file " + fileInput.files[i].name, fileErr);
                 }
             }
 
             if (processedCount > 0) {
-                const filename = `MA2_XML_Pools_v${vMaj}.${vMin}.${vStr}.zip`;
-                let msg = `Success! Converted ${processedCount} XML file(s) to v${vMaj}.${vMin}.${vStr}.`;
-                if (skippedShowGz) {
-                    msg += "\n⚠️ Skipped .show.gz files. Use PSR on console for full shows.";
-                }
-                await saveAndDownload(zip, filename, statusDiv, msg);
-            } else if (skippedShowGz) {
-                statusDiv.innerText = "Error: .show.gz files cannot be downgraded via XML converter.\nUse Partial Show Read (PSR) on the console for binary show files.";
-                statusDiv.style.color = "red";
+                const filename = `MA2_Showfiles_v${vMaj}.${vMin}.${vStr}.zip`;
+                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} file(s) to v${vMaj}.${vMin}.${vStr}`);
             } else {
-                statusDiv.innerText = "Error: Please select valid exported grandMA2 .xml files.";
+                statusDiv.innerText = "Error: Could not read or convert the selected files.";
                 statusDiv.style.color = "red";
             }
         }
 
+        // --- GDTF PARSER ---
         function mapGdtfToMa2(gdtfAttr) {
             if (!gdtfAttr) return "DUMMY";
             const map = {
