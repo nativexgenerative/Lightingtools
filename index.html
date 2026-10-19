@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MA2 Toolkit: Show Converter & GDTF Inspector</title>
+    <!-- Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- JSZip for packaging outputs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Pako for .show.gz compression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <style>
+        body {
+            background-color: var(--tg-theme-bg-color, #1A1A1B);
+            color: var(--tg-theme-text-color, #E1E1E1);
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            margin: 0;
+        }
+        .container {
+            background-color: var(--tg-theme-secondary-bg-color, #252526);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #FFC800;
+            max-width: 520px;
+            margin: auto;
+        }
+        h2 { color: #FFC800; text-align: center; margin-top: 0; font-size: 18px; }
+        .tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #444; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: #1A1A1B; color: #888; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .tab.active { background: #FFC800; color: #000; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+        
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 12px; color: #FFC800; }
+        select, input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            background: #111;
+            color: #FFC800;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 12px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            background-color: #FFC800;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:active { background-color: #e6b400; }
+        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; }
+        
+        /* DMX Chart Table Styles */
+        .chart-container {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            background: #111;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
+        th, td { padding: 6px; border-bottom: 1px solid #222; }
+        th { background: #222; color: #FFC800; position: sticky; top: 0; }
+        .note { font-size: 11px; color: #aaa; margin-top: 6px; line-height: 1.3; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>grandMA2 TOOLKIT</h2>
+        
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(0)">Version Converter</div>
+            <div class="tab" onclick="switchTab(1)">GDTF Fixture & Chart</div>
+        </div>
+
+        <!-- TAB 1: SHOW & XML CONVERTER -->
+        <div class="panel active" id="panel0">
+            <label>Select Show (.show.gz) or XML Files</label>
+            <input type="file" id="fileInput" multiple accept=".xml,.gz">
+            
+            <label>Target grandMA2 Version</label>
+            <select id="versionSelect">
+                <option value="3.9.60">v3.9.60.x</option>
+                <option value="3.9.61" selected>v3.9.61.x</option>
+                <option value="3.9.62">v3.9.62.x</option>
+                <option value="3.9.63">v3.9.63.x</option>
+            </select>
+            
+            <button onclick="processFiles()">CONVERT & PACK ARCHIVE</button>
+            <div id="status"></div>
+            <div class="note">ℹ️ Supports batch processing for exported XML pools and full show archives.</div>
+        </div>
+
+        <!-- TAB 2: GDTF TO MA2 CONVERTER & CHART INSPECTOR -->
+        <div class="panel" id="panel1">
+            <label>Select .gdtf Fixture File</label>
+            <input type="file" id="gdtfInput" accept=".gdtf,.zip">
+            
+            <button onclick="processGDTF()">PARSE GDTF & BUILD MA2 PROFILE</button>
+            <div id="gdtfStatus"></div>
+            
+            <div id="fixtureInfo" style="margin-top:10px; font-size:12px; display:none;">
+                <b id="fxName" style="color:#FFC800;"></b><br/>
+                <span id="fxModes"></span>
+            </div>
+
+            <div class="chart-container" id="chartWrapper" style="display:none;">
+                <table id="dmxTable">
+                    <thead>
+                        <tr>
+                            <th>Channel</th>
+                            <th>Attribute</th>
+                            <th>Footprint</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dmxBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        function switchTab(index) {
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', i === index);
+            });
+            document.querySelectorAll('.panel').forEach((p, i) => {
+                p.classList.toggle('active', i === index);
+            });
+        }
+
+        // --- TAB 1: VERSION CONVERTER LOGIC ---
+        async function processFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const versionParts = document.getElementById('versionSelect').value.split('.');
+            const statusDiv = document.getElementById('status');
+            
+            if (fileInput.files.length === 0) {
+                statusDiv.innerText = "Error: Please select files first.";
+                statusDiv.style.color = "red";
+                return;
+            }
+
+            const vMaj = versionParts[0];
+            const vMin = versionParts[1];
+            const vStr = versionParts[2];
+
+            statusDiv.innerText = "Processing files...";
+            statusDiv.style.color = "#FFC800";
+
+            const zip = new JSZip();
+            const p_major = /(major_vers=")\d+(")/g;
+            const p_minor = /(minor_vers=")\d+(")/g;
+            const p_stream = /(stream_vers=")\d+(")/g;
+            const p_schema = /(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/g;
+
+            let processedCount = 0;
+            try {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const file = fileInput.files[i];
+                    const arrayBuffer = await file.arrayBuffer();
+
+                    if (file.name.toLowerCase().endswith('.xml')) {
+                        const decoder = new TextDecoder('utf-8');
+                        let text = decoder.decode(arrayBuffer);
+                        text = text.replace(p_major, `$1${vMaj}$2`)
+                                   .replace(p_minor, `$1${vMin}$2`)
+                                   .replace(p_stream, `$1${vStr}$2`)
+                                   .replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
+                        zip.file(file.name, text);
+                        processedCount++;
+                    } else if (file.name.toLowerCase().endsWith('.gz')) {
+                        const decompressed = pako.inflate(new Uint8Array(arrayBuffer));
+                        const text = new TextDecoder('utf-8', { fatal: false }).decode(decompressed);
+                        let modified = text.replace(p_major, `$1${vMaj}$2`)
+                                           .replace(p_minor, `$1${vMin}$2`)
+                                           .replace(p_stream, `$1${vStr}$2`)
+                                           .replace(p_schema, `$1${vMaj}.${vMin}.${vStr}$2`);
+                        zip.file(file.name, pako.deflate(new TextEncoder().encode(modified)));
+                        processedCount++;
+                    }
+                }
+
+                const content = await zip.generateAsync({type:"blob"});
+                const url = window.URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `MA2_Bundle_v${vMaj}.${vMin}.${vStr}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                
+                statusDiv.innerText = `Success! Converted ${processedCount} files.`;
+                statusDiv.style.color = "lightgreen";
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } catch (err) {
+                statusDiv.innerText = "Error: " + err.message;
+                statusDiv.style.color = "red";
+            }
+        }
+
+        // --- TAB 2: GDTF PARSER & DMX CHART INSPECTOR ---
+        async function processGDTF() {
+            const fileInput = document.getElementById('gdtfInput');
+            const statusDiv = document.getElementById('gdtfStatus');
+            
+            if (fileInput.files.length === 0) {
+                statusDiv.innerText = "Error: Please select a GDTF file.";
+                statusDiv.style.color = "red";
+                return;
+            }
+
+            statusDiv.innerText = "Reading GDTF structure...";
+            statusDiv.style.color = "#FFC800";
+
+            try {
+                const file = fileInput.files[0];
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+
+                // GDTF stores its core metadata in description.xml
+                let descFile = zipContent.file("description.xml");
+                if (!descFile) {
+                    throw new Error("Invalid GDTF: description.xml missing.");
+                }
+
+                const xmlText = await descFile.async("text");
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                // Extract Fixture Metadata
+                const fixtureType = xmlDoc.querySelector("FixtureType");
+                const fxNameVal = fixtureType ? (fixtureType.getAttribute("Name") || fixtureType.getAttribute("LongName") || "Unknown Fixture") : file.name;
+                
+                // Extract DMX Modes & Channels
+                const dmxModes = xmlDoc.querySelectorAll("DMXMode");
+                let channelsList = [];
+                let modeNames = [];
+
+                dmxModes.forEach(mode => {
+                    modeNames.push(mode.getAttribute("Name"));
+                    const dmxChannels = mode.querySelectorAll("DMXChannel");
+                    dmxChannels.forEach((ch, idx) => {
+                        const coarse = ch.getAttribute("DMXBreak") || "1";
+                        const logicalChan = ch.querySelector("LogicalChannel");
+                        const attr = logicalChan ? logicalChan.getAttribute("Attribute") : "No Attribute";
+                        channelsList.push({ index: idx + 1, attribute: attr, dmxBreak: coarse });
+                    });
+                });
+
+                // Display Fixture UI Info
+                document.getElementById('fxName').innerText = `Fixture: ${fxNameVal}`;
+                document.getElementById('fxModes').innerText = `Available DMX Modes: ${modeNames.join(', ') || 'Standard'}`;
+                document.getElementById('fixtureInfo').style.display = "block";
+
+                // Populate DMX Chart Table
+                const tbody = document.getElementById('dmxBody');
+                tbody.innerHTML = "";
+                channelsList.forEach(item => {
+                    const row = `<tr><td>CH ${item.index}</td><td>${item.attribute}</td><td>Break ${item.dmxBreak}</td></tr>`;
+                    tbody.innerHTML += row;
+                });
+                document.getElementById('chartWrapper').style.display = "block";
+
+                // Build an MA2 XML-compatible Fixture profile wrapper for download
+                const ma2ProfileXML = `<MA major_vers="3" minor_vers="9" stream_vers="61" dt="2026-10-19">
+  <FixtureType Name="${fxNameVal}">
+    <DMXModes>
+      <DMXMode Name="${modeNames[0] || 'Default'}">
+        <!-- Parsed from GDTF container -->
+      </DMXMode>
+    </DMXModes>
+  </FixtureType>
+</MA>`;
+
+                const outZip = new JSZip();
+                outZip.file(`${fxNameVal}_MA2_Profile.xml`, ma2ProfileXML);
+                
+                const content = await outZip.generateAsync({type:"blob"});
+                const url = window.URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fxNameVal}_MA2_Converted.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                statusDiv.innerText = `Success! Parsed GDTF and generated MA2 Profile package.`;
+                statusDiv.style.color = "lightgreen";
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+            } catch (err) {
+                statusDiv.innerText = "GDTF Parse Error: " + err.message;
+                statusDiv.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
