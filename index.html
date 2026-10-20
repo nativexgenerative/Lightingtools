@@ -3,789 +3,544 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Show Control Pro - TMA</title>
-    
-    <!-- Telegram Web Apps SDK -->
+    <title>Show Control Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
         :root {
-            --bg-main: #0d0f12;
-            --bg-panel: #15181e;
-            --bg-card: #1c2027;
-            
-            /* Software Theme Colors */
-            --ma2-yellow: #e0a800;
-            --ma2-dark: #2a2e33;
-            --wing-blue: #0088cc;
-            --wing-orange: #f37021;
-            --reso-green: #00e676;
-            --reso-dark: #123822;
-            --mp3-purple: #ab47bc;
-            --mp3-dark: #3a1c42;
-            --comp-cyan: #00bcd4;
+            /* Theme Accents */
+            --ma2: #ca8a04; /* Yellow/Gold */
+            --reso: #ec4899; /* Magenta/Pink */
+            --wing: #06b6d4; /* Cyan */
+            --mp3: #22c55e; /* Green */
         }
-
+        
         body {
-            background-color: var(--bg-main);
-            color: #eceff4;
-            overscroll-behavior-y: contain; 
-            -webkit-tap-highlight-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0d0f12;
+            color: #e2e8f0;
+            overscroll-behavior: none;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- Custom Hardware Buttons --- */
-        .btn-hw {
-            transition: all 0.05s ease-out;
-            position: relative;
+        /* Nav Scrollbar hidden */
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Hardware Button Styles */
+        .hw-btn {
+            background: linear-gradient(180deg, #2a2e37 0%, #171a21 100%);
+            border: 1px solid #3f4654;
+            border-bottom-width: 3px;
             border-radius: 6px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+            font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            text-align: center;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.15);
+            transition: all 0.05s ease;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            text-transform: uppercase;
         }
-        .btn-hw:active {
+        .hw-btn:active {
             transform: translateY(2px);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.8), inset 0 1px 2px rgba(0,0,0,0.8);
-            filter: brightness(0.9);
+            border-bottom-width: 1px;
+            background: #14171d;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
         }
 
-        /* Theme Buttons */
-        .btn-ma2 {
-            background: linear-gradient(180deg, #f5bc18 0%, #ca9000 100%);
-            color: #0d0f12;
-            border: 1px solid #e0a800;
-        }
-        .btn-reso {
-            background: linear-gradient(180deg, #10f084 0%, #00b359 100%);
-            color: #052010;
-            border: 1px solid #00e676;
-        }
-        .btn-mp3 {
-            background: linear-gradient(180deg, #ba52cd 0%, #8e24aa 100%);
-            color: #ffffff;
-            border: 1px solid #ab47bc;
-        }
-        .btn-wing {
-            background: linear-gradient(180deg, #0099e6 0%, #006699 100%);
-            color: #ffffff;
-            border: 1px solid #0088cc;
-        }
-        .btn-dark {
-            background: linear-gradient(180deg, #2a303a 0%, #1e2229 100%);
-            color: #d8dee9;
-            border: 1px solid #3b4252;
-        }
-        .btn-danger {
-            background: linear-gradient(180deg, #ef5350 0%, #c62828 100%);
-            color: #ffffff;
-            border: 1px solid #e53935;
-        }
-        .btn-active-led {
-            box-shadow: 0 0 12px var(--reso-green), inset 0 1px 1px rgba(255,255,255,0.4) !important;
-            border-color: var(--reso-green) !important;
-        }
-
-        /* --- Fader Track & Thumb Styling --- */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]:focus { outline: none; }
+        /* Specific Button Accents */
+        .hw-btn.ma2-btn { border-color: var(--ma2); color: var(--ma2); }
+        .hw-btn.reso-btn { border-color: var(--reso); color: var(--reso); }
+        .hw-btn.wing-btn { border-color: var(--wing); color: var(--wing); }
+        .hw-btn.mp3-btn { border-color: var(--mp3); color: var(--mp3); }
         
-        /* Horizontal Fader Track */
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 10px;
-            cursor: pointer;
-            background: #090a0c;
-            border-radius: 5px;
-            border: 1px solid #2a303a;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
-        }
-        
-        /* Horizontal Fader Thumb */
-        input[type=range]::-webkit-slider-thumb {
-            height: 32px;
-            width: 22px;
-            border-radius: 4px;
-            background: linear-gradient(180deg, #4c566a 0%, #2e3440 100%);
-            border: 1px solid #d8dee9;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.4);
-            cursor: pointer;
-            -webkit-appearance: none;
-            margin-top: -11px;
+        .hw-btn-danger {
+            background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%);
+            border-color: #f87171;
+            color: white;
         }
 
-        /* Vertical Faders */
+        /* Hardware Vertical Faders */
         .fader-vert {
-            writing-mode: vertical-lr;
-            direction: rtl;
+            -webkit-appearance: slider-vertical;
             appearance: slider-vertical;
-            width: 32px;
-            height: 100%;
+            width: 38px;
+            height: 180px;
+            background: #090a0c;
+            border-radius: 4px;
+            border: 1px solid #2a2e37;
+            outline: none;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.9);
+            margin: 10px 0;
+        }
+        .fader-vert::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 34px;
+            height: 44px;
+            background: linear-gradient(180deg, #475569 0%, #1e293b 100%);
+            border: 2px solid #94a3b8;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.7), inset 0 2px 2px rgba(255,255,255,0.15);
         }
 
-        /* Theme Colored Thumbs */
-        .fader-ma2::-webkit-slider-thumb { background: linear-gradient(180deg, #f5bc18 0%, #8a6300 100%); }
-        .fader-wing::-webkit-slider-thumb { background: linear-gradient(180deg, #00aaff 0%, #004466 100%); }
-        .fader-reso::-webkit-slider-thumb { background: linear-gradient(180deg, #00ff88 0%, #006633 100%); }
+        /* Fader Thumb Colors */
+        .fader-ma2::-webkit-slider-thumb { border-color: var(--ma2); border-width: 2px; }
+        .fader-reso::-webkit-slider-thumb { border-color: var(--reso); border-width: 2px; }
+        .fader-wing::-webkit-slider-thumb { border-color: var(--wing); border-width: 2px; }
 
-        /* Custom Rotary Knob / Encoder UI */
-        .encoder-card {
-            background: radial-gradient(circle, #252b35 0%, #171b21 100%);
-            border: 1px solid #2e3543;
+        /* Horizontal Fader (Transition Time) */
+        .fader-horiz {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 20px;
+            background: #090a0c;
+            border-radius: 4px;
+            border: 1px solid #2a2e37;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
+        }
+        .fader-horiz::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(180deg, #475569 0%, #1e293b 100%);
+            border: 2px solid var(--reso);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.7);
         }
 
         /* Status LEDs */
-        .led-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .led-green { background-color: #00e676; box-shadow: 0 0 8px #00e676; }
-        .led-red { background-color: #ff5252; box-shadow: 0 0 8px #ff5252; }
-        .led-yellow { background-color: #ffd700; box-shadow: 0 0 8px #ffd700; }
+        .led { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .led-on { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .led-off { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
-        /* Scrollbars */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #0d0f12; }
-        ::-webkit-scrollbar-thumb { background: #2e3440; border-radius: 2px; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
+        .panel-title { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .panel-val { font-family: monospace; font-size: 13px; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
-<body class="h-screen flex flex-col justify-between overflow-hidden">
+<body class="flex flex-col h-screen overflow-hidden text-sm">
 
-    <!-- TOP HEADER -->
-    <header class="flex justify-between items-center px-3 py-2 border-b border-zinc-800 bg-zinc-950 shrink-0">
-        <div class="flex items-center space-x-2">
-            <span class="text-sm font-black tracking-wider text-zinc-100">SHOW<span class="text-cyan-400">CTRL</span> PRO</span>
-            <span id="user-greeting" class="text-[10px] text-zinc-500 font-mono hidden sm:inline">| User</span>
-        </div>
-        <div class="flex items-center space-x-2 bg-zinc-900 px-2 py-1 rounded border border-zinc-800 font-mono text-[10px]">
-            <span id="conn-led" class="led-dot led-yellow"></span>
-            <span id="conn-status-text" class="text-zinc-300 font-bold">CONNECTING</span>
-            <span id="ping-text" class="text-zinc-500 text-[9px] border-l border-zinc-800 pl-1">--ms</span>
+    <!-- HEADER -->
+    <header class="h-14 bg-[#0a0b0e] border-b border-gray-800 flex justify-between items-center px-4 shrink-0 shadow-lg z-10">
+        <div class="font-black tracking-widest text-gray-200 text-lg">PRO<span class="text-blue-500">CTRL</span></div>
+        <div class="flex items-center space-x-2 bg-black px-3 py-1.5 rounded-full border border-gray-800">
+            <span id="sys-led" class="led led-off"></span>
+            <span id="sys-status" class="text-[11px] font-mono font-bold text-gray-400 mt-0.5">OFFLINE</span>
         </div>
     </header>
 
-    <!-- FIXED TOP NAVIGATION BAR -->
-    <nav class="flex overflow-x-auto border-b border-zinc-800 bg-zinc-900/90 hide-scroll shrink-0">
-        <button onclick="switchTab('main')" id="nav-main" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-cyan-400 text-cyan-400 whitespace-nowrap">⚡ MAIN</button>
-        <button onclick="switchTab('ma2')" id="nav-ma2" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-zinc-400 whitespace-nowrap"><span class="text-[#e0a800]">●</span> MA2</button>
-        <button onclick="switchTab('wing')" id="nav-wing" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-zinc-400 whitespace-nowrap"><span class="text-[#0088cc]">●</span> WING</button>
-        <button onclick="switchTab('reso')" id="nav-reso" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-zinc-400 whitespace-nowrap"><span class="text-[#00e676]">●</span> RESO</button>
-        <button onclick="switchTab('mp3')" id="nav-mp3" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-zinc-400 whitespace-nowrap"><span class="text-[#ab47bc]">●</span> MP3</button>
-        <button onclick="switchTab('setup')" id="nav-setup" class="tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-zinc-400 whitespace-nowrap">⚙️ SETUP</button>
+    <!-- TAB NAVIGATION -->
+    <nav class="h-14 bg-[#14171d] border-b border-gray-800 flex overflow-x-auto hide-scroll shrink-0 font-bold text-xs">
+        <button onclick="nav('main')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-white text-white uppercase tracking-wider" data-tab="main">Main</button>
+        <button onclick="nav('ma2')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-transparent text-gray-500 hover:text-yellow-600 uppercase tracking-wider" data-tab="ma2">MA2</button>
+        <button onclick="nav('reso')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-transparent text-gray-500 hover:text-pink-500 uppercase tracking-wider" data-tab="reso">Resolume</button>
+        <button onclick="nav('wing')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-transparent text-gray-500 hover:text-cyan-500 uppercase tracking-wider" data-tab="wing">Wing</button>
+        <button onclick="nav('mp3')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-transparent text-gray-500 hover:text-green-500 uppercase tracking-wider" data-tab="mp3">MultiPlay</button>
+        <button onclick="nav('setup')" class="nav-btn px-5 flex-shrink-0 border-b-2 border-transparent text-gray-500 hover:text-gray-300 uppercase tracking-wider" data-tab="setup">Setup</button>
     </nav>
 
-    <!-- MAIN VIEWPORT -->
-    <main class="flex-1 overflow-y-auto p-3 relative">
-
-        <!-- ================= TAB 1: MAIN (SHOW OVERVIEW) ================= -->
-        <div id="tab-main" class="tab-content space-y-3">
+    <!-- CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto p-3 relative bg-[#0d0f12]">
+        
+        <!-- ================= MAIN TAB ================= -->
+        <div id="tab-main" class="tab-pane flex flex-col space-y-4 h-full">
             
-            <!-- Live Software Status Grid -->
-            <div class="grid grid-cols-2 gap-2">
-                <!-- MA2 Card -->
-                <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 flex flex-col justify-between">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] font-black text-[#e0a800] tracking-wider">grandMA2</span>
-                        <span class="led-dot led-green"></span>
-                    </div>
-                    <div class="text-xs font-bold text-zinc-200 truncate">Seq 1: Main Show</div>
-                    <div class="text-[10px] font-mono text-zinc-400">Cue 12.0 [Intro]</div>
+            <!-- WOL Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="btn(99,1,1)" class="hw-btn py-4 text-xs text-gray-300 border-l-4 border-l-blue-500">⚡ WOL SYS 1</button>
+                <button onclick="btn(99,1,2)" class="hw-btn py-4 text-xs text-gray-300 border-l-4 border-l-purple-500">⚡ WOL SYS 2</button>
+            </div>
+
+            <!-- Software Status Panels -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-3 shadow-inner">
+                    <div class="panel-title text-yellow-600">MA2 STATUS</div>
+                    <div id="disp-ma2" class="panel-val">--</div>
                 </div>
-                <!-- Wing Card -->
-                <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 flex flex-col justify-between">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] font-black text-[#0088cc] tracking-wider">BEHRINGER WING</span>
-                        <span class="led-dot led-green"></span>
-                    </div>
-                    <div class="text-xs font-bold text-zinc-200 truncate">Main LR: 0.0 dB</div>
-                    <div class="text-[10px] font-mono text-zinc-400">DCA 1 Active</div>
+                <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-3 shadow-inner">
+                    <div class="panel-title text-pink-500">RESOLUME CUE</div>
+                    <div id="disp-reso" class="panel-val">--</div>
                 </div>
-                <!-- Reso Card -->
-                <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 flex flex-col justify-between">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] font-black text-[#00e676] tracking-wider">RESOLUME</span>
-                        <span class="led-dot led-green"></span>
-                    </div>
-                    <div class="text-xs font-bold text-zinc-200 truncate">Col 3: Visuals</div>
-                    <div class="text-[10px] font-mono text-zinc-400">FPS: 59.9</div>
+                <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-3 shadow-inner">
+                    <div class="panel-title text-cyan-500">WING LEVEL</div>
+                    <div id="disp-wing" class="panel-val">--</div>
                 </div>
-                <!-- MP3 Card -->
-                <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 flex flex-col justify-between">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] font-black text-[#ab47bc] tracking-wider">MULTIPLAY 3</span>
-                        <span class="led-dot led-green"></span>
-                    </div>
-                    <div class="text-xs font-bold text-zinc-200 truncate">Cue 4.0: Track A</div>
-                    <div class="text-[10px] font-mono text-zinc-400 text-purple-400">PLAYING - 01:24</div>
+                <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-3 shadow-inner">
+                    <div class="panel-title text-green-500">MULTIPLAY CUE</div>
+                    <div id="disp-mp3" class="panel-val">--</div>
                 </div>
             </div>
 
-            <!-- Live Cue Information Ticker -->
-            <div class="bg-black border border-zinc-800 rounded-lg p-3 font-mono">
-                <div class="flex justify-between text-[10px] text-zinc-500 mb-1">
-                    <span>CUE LIST TIMELINE</span>
-                    <span class="text-cyan-400">SYNCED</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                        <div class="text-[9px] text-zinc-500">ACTIVE CUE</div>
-                        <div class="text-sm font-bold text-green-400 truncate">4.0 - Opening Scene Track</div>
-                    </div>
-                    <div>
-                        <div class="text-[9px] text-zinc-500">NEXT CUE</div>
-                        <div class="text-sm font-bold text-zinc-300 truncate">5.0 - Speech Mic Cue</div>
-                    </div>
-                </div>
-                <!-- Progress Bar -->
-                <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div class="bg-cyan-400 h-full w-2/3 transition-all duration-300"></div>
-                </div>
-                <div class="flex justify-between text-[9px] text-zinc-400 mt-1">
-                    <span>ELAPSED: 01:24</span>
-                    <span>REMAINING: 00:42</span>
-                </div>
-            </div>
-
-            <!-- Fast Masters Section -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-3">
-                <div class="text-[10px] font-bold text-zinc-400 tracking-wider border-b border-zinc-800 pb-1">FAST MASTERS</div>
-                
-                <div class="grid grid-cols-3 gap-3">
-                    <!-- MA2 Grand Master -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[9px] text-[#e0a800] font-bold mb-1">MA2 GRAND</span>
-                        <input type="range" min="0" max="100" value="100" class="fader-ma2" oninput="triggerCompanionApi(1,0,1,this.value)">
-                    </div>
-                    <!-- Wing Main LR -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[9px] text-[#0088cc] font-bold mb-1">WING MAIN</span>
-                        <input type="range" min="0" max="100" value="80" class="fader-wing" oninput="triggerCompanionApi(1,0,2,this.value)">
-                    </div>
-                    <!-- Reso Comp Master -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[9px] text-[#00e676] font-bold mb-1">RESO COMP</span>
-                        <input type="range" min="0" max="100" value="100" class="fader-reso" oninput="triggerCompanionApi(1,0,3,this.value)">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Emergency Panic Button -->
-            <button onclick="confirmPanic()" class="btn-hw btn-danger w-full py-4 text-base tracking-widest font-black rounded-lg">
-                🚨 GLOBAL EMERGENCY PANIC
-            </button>
-        </div>
-
-        <!-- ================= TAB 2: grandMA2 ================= -->
-        <div id="tab-ma2" class="tab-content hidden space-y-3">
-            
-            <!-- Command Line Quick Tools -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2 space-y-2">
-                <div class="text-[10px] font-bold text-[#e0a800] border-b border-zinc-800 pb-1">COMMAND LINE TOOLS</div>
-                <div class="grid grid-cols-4 gap-1.5 text-[10px]">
-                    <button onclick="sendCmd('MA2', 'THRU')" class="btn-hw btn-dark py-2">THRU</button>
-                    <button onclick="sendCmd('MA2', 'FULL')" class="btn-hw btn-dark py-2">FULL</button>
-                    <button onclick="sendCmd('MA2', 'CLEAR')" class="btn-hw btn-dark py-2 text-yellow-500">CLR 3x</button>
-                    <button onclick="sendCmd('MA2', 'HIGHLIGHT')" class="btn-hw btn-dark py-2">H-LIGHT</button>
-                    <button onclick="sendCmd('MA2', 'SOLO')" class="btn-hw btn-dark py-2">SOLO</button>
-                    <button onclick="sendCmd('MA2', 'AT')" class="btn-hw btn-dark py-2">AT</button>
-                    <button onclick="sendCmd('MA2', 'PLEASE')" class="btn-hw btn-ma2 py-2 font-bold">PLEASE</button>
-                    <button onclick="sendCmd('MA2', 'STORE')" class="btn-hw btn-dark py-2">STORE</button>
-                    <button onclick="sendCmd('MA2', 'UPDATE')" class="btn-hw btn-dark py-2">UPDATE</button>
-                    <button onclick="sendCmd('MA2', 'RECORD')" class="btn-hw btn-dark py-2">RECORD</button>
-                    <button onclick="sendCmd('MA2', 'DELETE')" class="btn-hw btn-danger py-2">DEL</button>
-                    <button onclick="sendCmd('MA2', 'OFF')" class="btn-hw btn-dark py-2 text-red-400">OFF</button>
-                </div>
-            </div>
-
-            <!-- Fixture Selection Matrix & Numeric Pad -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 space-y-2">
-                <div class="text-[10px] font-bold text-zinc-400">FIXTURE SELECTOR & KEYPAD</div>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="sendCmd('MA2', 'Fix 1-10')" class="btn-hw btn-dark py-1.5 text-[9px]">Fix 1-10</button>
-                    <button onclick="sendCmd('MA2', 'Fix 101-110')" class="btn-hw btn-dark py-1.5 text-[9px]">Fix 101-110</button>
-                    <button onclick="sendCmd('MA2', 'Grp 1-5')" class="btn-hw btn-dark py-1.5 text-[9px]">Grp 1-5</button>
-                    <button onclick="sendCmd('MA2', 'All Dim')" class="btn-hw btn-dark py-1.5 text-[9px]">All Dim</button>
-                </div>
-                <div class="flex space-x-1">
-                    <input type="text" id="ma2-cmd-input" class="bg-black border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-yellow-400 flex-1" placeholder="Fixture 1 At 100">
-                    <button onclick="sendCmd('MA2', 'EXEC_INPUT')" class="btn-hw btn-ma2 px-3 text-xs">GO</button>
-                </div>
-            </div>
-
-            <!-- 4 Rotary / Attribute Encoders -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 space-y-2">
-                <div class="text-[10px] font-bold text-[#e0a800]">ATTRIBUTE ENCODERS</div>
-                <div class="grid grid-cols-2 gap-2">
-                    <!-- Dimmer -->
-                    <div class="encoder-card p-2 rounded border border-zinc-800 flex flex-col items-center">
-                        <span class="text-[10px] text-zinc-400 mb-1">DIMMER</span>
-                        <div class="flex space-x-1 w-full">
-                            <button onclick="adjustEncoder('Dimmer', -10)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">-10%</button>
-                            <button onclick="adjustEncoder('Dimmer', -1)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">-1%</button>
-                            <button onclick="adjustEncoder('Dimmer', 1)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">+1%</button>
-                            <button onclick="adjustEncoder('Dimmer', 10)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">+10%</button>
-                        </div>
-                    </div>
-                    <!-- Pan/Tilt -->
-                    <div class="encoder-card p-2 rounded border border-zinc-800 flex flex-col items-center">
-                        <span class="text-[10px] text-zinc-400 mb-1">PAN / TILT</span>
-                        <div class="flex space-x-1 w-full">
-                            <button onclick="adjustEncoder('Pan', -5)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">P-</button>
-                            <button onclick="adjustEncoder('Pan', 5)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">P+</button>
-                            <button onclick="adjustEncoder('Tilt', -5)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">T-</button>
-                            <button onclick="adjustEncoder('Tilt', 5)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">T+</button>
-                        </div>
-                    </div>
-                    <!-- Color -->
-                    <div class="encoder-card p-2 rounded border border-zinc-800 flex flex-col items-center">
-                        <span class="text-[10px] text-zinc-400 mb-1">COLOR (HUE)</span>
-                        <div class="flex space-x-1 w-full">
-                            <button onclick="adjustEncoder('Color', -10)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">-10</button>
-                            <button onclick="adjustEncoder('Color', 10)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">+10</button>
-                        </div>
-                    </div>
-                    <!-- Gobo/Beam -->
-                    <div class="encoder-card p-2 rounded border border-zinc-800 flex flex-col items-center">
-                        <span class="text-[10px] text-zinc-400 mb-1">GOBO / BEAM</span>
-                        <div class="flex space-x-1 w-full">
-                            <button onclick="adjustEncoder('Gobo', -1)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">PREV</button>
-                            <button onclick="adjustEncoder('Gobo', 1)" class="btn-hw btn-dark flex-1 py-1 text-[10px]">NEXT</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 10 Executor Faders (6 Exec + 4 Master Exec) -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-2">
-                <div class="flex justify-between items-center border-b border-zinc-800 pb-1">
-                    <span class="text-[10px] font-bold text-zinc-400">EXECUTOR FADERS (10 CHANNELS)</span>
-                    <div class="flex items-center space-x-1">
-                        <button onclick="changeMa2Page(-1)" class="btn-hw btn-dark px-2 py-0.5 text-[9px]">PAGE -</button>
-                        <span id="ma2-page-lbl" class="text-xs font-mono text-yellow-400 px-1">PG 1</span>
-                        <button onclick="changeMa2Page(1)" class="btn-hw btn-dark px-2 py-0.5 text-[9px]">PAGE +</button>
-                    </div>
-                </div>
-
-                <!-- Horizontal scroll grid for 10 vertical faders -->
-                <div class="flex space-x-3 overflow-x-auto py-2 px-1 hide-scroll" style="height: 220px;">
-                    <!-- Generating 10 Exec Channels -->
-                    <script>
-                        for(let i=1; i<=10; i++) {
-                            const isMaster = i > 6;
-                            document.write(`
-                                <div class="flex flex-col items-center shrink-0 w-12 bg-black/40 p-1 rounded border border-zinc-800 h-full justify-between">
-                                    <span class="text-[8px] font-mono text-zinc-400">${isMaster ? 'MSTR' : 'EXEC'} ${i}</span>
-                                    <button onclick="sendCmd('MA2', 'Flash ${i}')" class="btn-hw btn-dark w-full py-1 text-[8px]">FL</button>
-                                    <input type="range" min="0" max="100" value="0" class="fader-vert fader-ma2" oninput="sendCmd('MA2', 'Exec ${i} Fader', this.value)">
-                                    <button onclick="sendCmd('MA2', 'Go ${i}')" class="btn-hw ${isMaster ? 'btn-ma2' : 'btn-dark'} w-full py-1 text-[9px] font-bold">GO</button>
-                                </div>
-                            `);
-                        }
-                    </script>
+            <!-- Blackout Master Section -->
+            <div class="flex-1 flex flex-col justify-end space-y-3 mt-4">
+                <div class="text-center font-black tracking-widest text-[10px] text-gray-600 uppercase">Panic / Blackouts</div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="btn(99,2,1)" class="hw-btn hw-btn-danger py-5 text-sm tracking-wider shadow-lg">MA2 B.O.</button>
+                    <button onclick="btn(99,2,2)" class="hw-btn hw-btn-danger py-5 text-sm tracking-wider shadow-lg">RESO B.O.</button>
+                    <button onclick="btn(99,2,3)" class="hw-btn hw-btn-danger py-5 text-sm tracking-wider shadow-lg">WING MUTE</button>
+                    <button onclick="btn(99,2,4)" class="hw-btn hw-btn-danger py-5 text-sm tracking-wider shadow-lg">MP STOP</button>
                 </div>
             </div>
         </div>
 
-        <!-- ================= TAB 3: BEHRINGER WING ================= -->
-        <div id="tab-wing" class="tab-content hidden space-y-3">
+        <!-- ================= MA2 TAB ================= -->
+        <div id="tab-ma2" class="tab-pane hidden space-y-4">
             
-            <div class="flex justify-between items-center bg-zinc-900 p-2 rounded-lg border border-zinc-800">
-                <span class="text-[10px] font-bold text-[#0088cc]">WING 5-CHANNEL MASTER DESK</span>
-                <div class="flex space-x-1">
-                    <button onclick="sendCmd('Wing', 'Mute All')" class="btn-hw btn-danger px-2 py-1 text-[9px]">MUTE ALL</button>
+            <!-- Programmer Buttons -->
+            <div class="grid grid-cols-3 gap-2 p-2 bg-[#12141a] rounded-lg border border-[#2a2e37]">
+                <button onclick="btn(2,1,1)" class="hw-btn py-3 text-xs ma2-btn">Prev</button>
+                <button onclick="btn(2,1,2)" class="hw-btn py-3 text-xs ma2-btn">Next</button>
+                <button onclick="btn(2,1,3)" class="hw-btn py-3 text-xs text-gray-300">Highlt</button>
+                <button onclick="btn(2,1,4)" class="hw-btn py-3 text-xs text-gray-300">Thru</button>
+                <button onclick="btn(2,1,5)" class="hw-btn py-3 text-xs text-green-400">Full</button>
+                <button onclick="btn(2,1,6)" class="hw-btn py-3 text-xs text-red-400">Clear</button>
+            </div>
+
+            <!-- Encoders (+/- pairs) -->
+            <div class="grid grid-cols-4 gap-2 bg-[#12141a] p-2 rounded-lg border border-[#2a2e37]">
+                <div class="flex flex-col space-y-1"><div class="text-center text-[10px] font-bold text-gray-500 mb-1">PAN</div>
+                    <button onclick="btn(2,2,1)" class="hw-btn py-2 text-lg">+</button>
+                    <button onclick="btn(2,2,2)" class="hw-btn py-2 text-lg">-</button>
+                </div>
+                <div class="flex flex-col space-y-1"><div class="text-center text-[10px] font-bold text-gray-500 mb-1">TILT</div>
+                    <button onclick="btn(2,2,3)" class="hw-btn py-2 text-lg">+</button>
+                    <button onclick="btn(2,2,4)" class="hw-btn py-2 text-lg">-</button>
+                </div>
+                <div class="flex flex-col space-y-1"><div class="text-center text-[10px] font-bold text-gray-500 mb-1">DIM</div>
+                    <button onclick="btn(2,2,5)" class="hw-btn py-2 text-lg">+</button>
+                    <button onclick="btn(2,2,6)" class="hw-btn py-2 text-lg">-</button>
+                </div>
+                <div class="flex flex-col space-y-1"><div class="text-center text-[10px] font-bold text-gray-500 mb-1">COLOR</div>
+                    <button onclick="btn(2,2,7)" class="hw-btn py-2 text-lg">+</button>
+                    <button onclick="btn(2,2,8)" class="hw-btn py-2 text-lg">-</button>
                 </div>
             </div>
 
-            <!-- 5 Dedicated Motorized Channels -->
-            <div class="grid grid-cols-5 gap-1.5 h-80">
-                <!-- Channel Template -->
+            <!-- Exec Faders & Bumps -->
+            <div class="flex overflow-x-auto space-x-3 p-3 bg-[#12141a] rounded-lg border border-[#2a2e37] hide-scroll">
                 <script>
-                    const channels = [
-                        { id: 1, name: 'VOCAL', color: 'border-blue-500' },
-                        { id: 2, name: 'MEDIA', color: 'border-green-500' },
-                        { id: 3, name: 'AUX/DJ', color: 'border-yellow-500' },
-                        { id: 4, name: 'BAND', color: 'border-purple-500' },
-                        { id: 5, name: 'MAIN', color: 'border-red-500' }
-                    ];
-
-                    channels.forEach(ch => {
+                    for(let i=1; i<=6; i++) {
                         document.write(`
-                            <div class="bg-zinc-900 border ${ch.color} rounded-lg p-1 flex flex-col justify-between items-center text-center">
-                                <div class="w-full">
-                                    <div class="text-[9px] font-bold text-zinc-300 truncate">${ch.name}</div>
-                                    <button onclick="toggleMute(this)" class="btn-hw btn-dark w-full py-1 my-1 text-[8px] text-red-400">MUTE</button>
-                                    <button onclick="toggleSolo(this)" class="btn-hw btn-dark w-full py-1 mb-1 text-[8px] text-yellow-400">SOLO</button>
-                                </div>
-                                <input type="range" min="0" max="100" value="75" class="fader-vert fader-wing my-1" oninput="sendCmd('Wing', 'Ch ${ch.id} Level', this.value)">
-                                <div class="w-full space-y-1">
-                                    <div class="flex space-x-0.5">
-                                        <button onclick="sendCmd('Wing', 'Ch ${ch.id} Trim -')" class="btn-hw btn-dark flex-1 py-0.5 text-[8px]">-3</button>
-                                        <button onclick="sendCmd('Wing', 'Ch ${ch.id} Trim +')" class="btn-hw btn-dark flex-1 py-0.5 text-[8px]">+3</button>
-                                    </div>
-                                    <span class="text-[8px] font-mono text-zinc-500 block">CH ${ch.id}</span>
-                                </div>
+                            <div class="flex flex-col items-center shrink-0">
+                                <span class="text-[10px] font-mono text-yellow-600 font-bold mb-1">EX ${i}</span>
+                                <input type="range" min="0" max="255" value="0" class="fader-vert fader-ma2" 
+                                    oninput="sendAnalog('ma2_fader_${i}', this.value)">
+                                <button onclick="btn(2,3,${i})" class="hw-btn ma2-btn w-12 h-10 text-[10px] mt-2">BUMP</button>
                             </div>
                         `);
-                    });
+                    }
                 </script>
-            </div>
-
-            <!-- DCA & Snapshots Section -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 space-y-2">
-                <div class="text-[10px] font-bold text-zinc-400">DCA GROUPS & SNAPSHOTS</div>
-                <div class="grid grid-cols-4 gap-2">
-                    <button onclick="sendCmd('Wing', 'DCA 1 Mute')" class="btn-hw btn-dark py-2 text-[10px]">DCA 1 MUTE</button>
-                    <button onclick="sendCmd('Wing', 'DCA 2 Mute')" class="btn-hw btn-dark py-2 text-[10px]">DCA 2 MUTE</button>
-                    <button onclick="sendCmd('Wing', 'DCA 3 Mute')" class="btn-hw btn-dark py-2 text-[10px]">DCA 3 MUTE</button>
-                    <button onclick="sendCmd('Wing', 'DCA 4 Mute')" class="btn-hw btn-dark py-2 text-[10px]">DCA 4 MUTE</button>
-                </div>
             </div>
         </div>
 
-        <!-- ================= TAB 4: RESOLUME ARENA ================= -->
-        <div id="tab-reso" class="tab-content hidden space-y-3">
+        <!-- ================= RESOLUME TAB ================= -->
+        <div id="tab-reso" class="tab-pane hidden space-y-4">
             
-            <!-- Group Selector -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex space-x-2">
-                <button onclick="selectResoGroup(1)" class="btn-hw btn-reso flex-1 py-1.5 text-xs">GROUP 1</button>
-                <button onclick="selectResoGroup(2)" class="btn-hw btn-dark flex-1 py-1.5 text-xs">GROUP 2</button>
-                <button onclick="selectResoGroup('Master')" class="btn-hw btn-dark flex-1 py-1.5 text-xs">MASTER COMP</button>
+            <!-- Column/Layer Grid -->
+            <div class="bg-[#12141a] p-3 rounded-lg border border-[#2a2e37]">
+                <div class="text-[10px] font-bold text-pink-500 mb-2">TRIGGER GRID</div>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="btn(3,1,1)" class="hw-btn py-2 text-[10px] text-gray-400">L1 C1</button>
+                    <button onclick="btn(3,1,2)" class="hw-btn py-2 text-[10px] text-gray-400">L1 C2</button>
+                    <button onclick="btn(3,1,3)" class="hw-btn py-2 text-[10px] text-gray-400">L1 C3</button>
+                    <button onclick="btn(3,1,4)" class="hw-btn py-2 text-[10px] reso-btn">COL 1</button>
+
+                    <button onclick="btn(3,1,5)" class="hw-btn py-2 text-[10px] text-gray-400">L2 C1</button>
+                    <button onclick="btn(3,1,6)" class="hw-btn py-2 text-[10px] text-gray-400">L2 C2</button>
+                    <button onclick="btn(3,1,7)" class="hw-btn py-2 text-[10px] text-gray-400">L2 C3</button>
+                    <button onclick="btn(3,1,8)" class="hw-btn py-2 text-[10px] reso-btn">COL 2</button>
+                </div>
             </div>
 
-            <!-- Column Trigger Matrix Grid -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold text-[#00e676]">COLUMN MATRIX (1-8)</span>
-                    <button onclick="sendCmd('Resolume', 'Clear Comp')" class="btn-hw btn-danger px-2 py-0.5 text-[9px]">CLEAR COMP</button>
+            <!-- Transitions -->
+            <div class="bg-[#12141a] p-3 rounded-lg border border-[#2a2e37]">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="text-[10px] font-bold text-pink-500">TRANSITION</div>
+                    <div class="flex space-x-2">
+                        <button onclick="btn(3,2,1)" class="hw-btn px-4 py-1.5 text-[10px] text-white bg-pink-700">CUT</button>
+                        <button onclick="btn(3,2,2)" class="hw-btn px-4 py-1.5 text-[10px] reso-btn">AUTO</button>
+                    </div>
                 </div>
-                <div class="grid grid-cols-4 gap-2">
+                <input type="range" min="0" max="100" value="50" class="fader-horiz" oninput="sendAnalog('reso_trans_time', this.value)">
+                <div class="text-center text-[9px] text-gray-500 mt-1 font-mono">TIME</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Dials (Simulated as short faders) -->
+                <div class="flex overflow-x-auto space-x-2 p-3 bg-[#12141a] rounded-lg border border-[#2a2e37] hide-scroll">
                     <script>
-                        for(let col=1; col<=8; col++) {
+                        for(let i=1; i<=4; i++) {
                             document.write(`
-                                <button onclick="sendCmd('Resolume', 'Column ${col}')" class="btn-hw btn-reso py-3 text-xs font-black">COL ${col}</button>
+                                <div class="flex flex-col items-center shrink-0">
+                                    <span class="text-[9px] font-mono text-gray-400">DIAL ${i}</span>
+                                    <input type="range" min="0" max="255" value="127" class="fader-vert fader-reso !h-24 !w-6" 
+                                        oninput="sendAnalog('reso_dial_${i}', this.value)">
+                                </div>
+                            `);
+                        }
+                    </script>
+                </div>
+
+                <!-- Layer Faders -->
+                <div class="flex overflow-x-auto space-x-2 p-3 bg-[#12141a] rounded-lg border border-[#2a2e37] hide-scroll">
+                    <script>
+                        for(let i=1; i<=4; i++) {
+                            document.write(`
+                                <div class="flex flex-col items-center shrink-0">
+                                    <span class="text-[9px] font-mono text-pink-500 font-bold">LYR ${i}</span>
+                                    <input type="range" min="0" max="255" value="255" class="fader-vert fader-reso !h-24" 
+                                        oninput="sendAnalog('reso_layer_${i}', this.value)">
+                                </div>
                             `);
                         }
                     </script>
                 </div>
             </div>
+        </div>
 
-            <!-- Layer Faders & Opacity -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-3">
-                <div class="text-[10px] font-bold text-zinc-400">LAYER OPACITY & MASTERS</div>
-                <div class="space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <span class="text-[9px] font-mono text-zinc-400 w-12">LYR 1</span>
-                        <input type="range" min="0" max="100" value="100" class="fader-reso" oninput="sendCmd('Resolume', 'L1 Opacity', this.value)">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-[9px] font-mono text-zinc-400 w-12">LYR 2</span>
-                        <input type="range" min="0" max="100" value="100" class="fader-reso" oninput="sendCmd('Resolume', 'L2 Opacity', this.value)">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-[9px] font-mono text-zinc-400 w-12">LYR 3</span>
-                        <input type="range" min="0" max="100" value="100" class="fader-reso" oninput="sendCmd('Resolume', 'L3 Opacity', this.value)">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Speed & BPM Controls -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 space-y-2">
-                <div class="text-[10px] font-bold text-zinc-400">SPEED & BPM CONTROLS</div>
-                <div class="grid grid-cols-4 gap-1.5">
-                    <button onclick="sendCmd('Resolume', 'BPM Tap')" class="btn-hw btn-dark py-2 text-[10px] text-yellow-400">BPM TAP</button>
-                    <button onclick="sendCmd('Resolume', 'Speed 0.5x')" class="btn-hw btn-dark py-2 text-[10px]">0.5x</button>
-                    <button onclick="sendCmd('Resolume', 'Speed 1x')" class="btn-hw btn-dark py-2 text-[10px]">1.0x</button>
-                    <button onclick="sendCmd('Resolume', 'Speed 2x')" class="btn-hw btn-dark py-2 text-[10px]">2.0x</button>
-                </div>
+        <!-- ================= WING TAB ================= -->
+        <div id="tab-wing" class="tab-pane hidden space-y-4 h-full">
+            
+            <div class="flex overflow-x-auto space-x-4 p-4 bg-[#12141a] rounded-lg border border-[#2a2e37] hide-scroll h-full items-center">
+                <!-- 5 Channels + Main -->
+                <script>
+                    for(let i=1; i<=6; i++) {
+                        let isMaster = (i===6);
+                        document.write(`
+                            <div class="flex flex-col items-center space-y-3 shrink-0 h-full justify-center">
+                                <span class="text-[11px] font-mono font-black ${isMaster ? 'text-cyan-400' : 'text-gray-400'} border-b border-[#2a2e37] w-full text-center pb-2 mb-2">${isMaster ? 'MAIN' : 'CH '+i}</span>
+                                <button onclick="btn(5,1,${i})" class="hw-btn w-12 h-10 text-[10px] ${isMaster ? 'text-red-500 border-red-900' : 'text-orange-400'}">MUTE</button>
+                                <input type="range" min="0" max="100" value="${isMaster ? 80 : 0}" class="fader-vert fader-wing flex-1" 
+                                    oninput="sendAnalog('wing_fader_${isMaster ? 'm' : i}', this.value)">
+                            </div>
+                        `);
+                    }
+                </script>
             </div>
         </div>
 
-        <!-- ================= TAB 5: MULTIPLAY 3 ================= -->
-        <div id="tab-mp3" class="tab-content hidden space-y-3">
+        <!-- ================= MULTIPLAY TAB ================= -->
+        <div id="tab-mp3" class="tab-pane hidden space-y-4 flex flex-col h-full">
             
-            <!-- Live Status & Transport -->
-            <div class="bg-black border border-[#ab47bc] rounded-lg p-3 space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] text-zinc-500 font-mono">MULTIPLAY CUE TRACKER</span>
-                    <span class="text-xs text-purple-400 font-mono font-bold">CUE LIST 1</span>
-                </div>
-                
-                <div class="flex items-center justify-between space-x-3">
-                    <button onclick="sendCmd('MultiPlay', 'Prev Cue')" class="btn-hw btn-dark px-3 py-3 text-xs">⏮ PREV</button>
-                    <button onclick="sendCmd('MultiPlay', 'GO')" class="btn-hw btn-mp3 flex-1 py-5 text-2xl font-black tracking-widest rounded-lg">GO</button>
-                    <button onclick="sendCmd('MultiPlay', 'Next Cue')" class="btn-hw btn-dark px-3 py-3 text-xs">NEXT ⏭</button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="sendCmd('MultiPlay', 'Pause')" class="btn-hw btn-dark py-2 text-xs text-yellow-400">PAUSE</button>
-                    <button onclick="sendCmd('MultiPlay', 'Stop')" class="btn-hw btn-danger py-2 text-xs">STOP ALL</button>
+            <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-5 flex-1 shadow-inner flex flex-col">
+                <div class="text-[12px] text-green-500 font-bold mb-2 uppercase tracking-widest">Live Feedback</div>
+                <div id="disp-mp3-full" class="flex-1 bg-black border border-gray-800 rounded p-4 font-mono text-sm text-green-400 overflow-y-auto">
+                    Waiting for Companion connection...
                 </div>
             </div>
 
-            <!-- Cue List View -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-2">
-                <div class="text-[10px] font-bold text-zinc-400 border-b border-zinc-800 pb-1">CUE LIST OVERVIEW</div>
-                <div class="space-y-1 font-mono text-xs max-h-48 overflow-y-auto">
-                    <div class="p-2 rounded bg-purple-900/40 border border-purple-500 flex justify-between items-center">
-                        <div>
-                            <span class="font-bold text-white">4.0 - Opening Track</span>
-                            <span class="text-[9px] text-purple-300 block">Type: Audio | 03:30</span>
-                        </div>
-                        <span class="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded">ACTIVE</span>
-                    </div>
-                    <div class="p-2 rounded bg-black/40 border border-zinc-800 flex justify-between items-center text-zinc-400">
-                        <div>
-                            <span>5.0 - Speech Mic Cue</span>
-                            <span class="text-[9px] text-zinc-600 block">Type: OSC / MIDI</span>
-                        </div>
-                        <span class="text-[10px] text-zinc-600">NEXT</span>
-                    </div>
-                    <div class="p-2 rounded bg-black/40 border border-zinc-800 flex justify-between items-center text-zinc-400 opacity-60">
-                        <div>
-                            <span>6.0 - Video Interlude</span>
-                            <span class="text-[9px] text-zinc-600 block">Type: Video Sync</span>
-                        </div>
-                    </div>
+            <div class="flex flex-col space-y-3 shrink-0">
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="btn(4,1,2)" class="hw-btn py-5 text-sm text-yellow-500 font-bold">PAUSE</button>
+                    <button onclick="btn(4,1,3)" class="hw-btn py-5 text-sm text-gray-300 font-bold">FADE OUT</button>
                 </div>
+                <button onclick="btn(4,1,4)" class="hw-btn hw-btn-danger py-5 text-sm font-bold">STOP ALL</button>
+                <button onclick="btn(4,1,1)" class="hw-btn mp3-btn w-full py-8 text-3xl font-black tracking-widest shadow-lg">GO</button>
             </div>
         </div>
 
-        <!-- ================= TAB 6: SETUP ================= -->
-        <div id="tab-setup" class="tab-content hidden space-y-3">
-            <div class="text-[10px] font-bold text-zinc-400 border-b border-zinc-800 pb-1">BITFOCUS COMPANION REST API CONFIG</div>
-            
-            <div class="bg-zinc-900 p-3 rounded-lg border border-zinc-800 space-y-3">
+        <!-- ================= SETUP TAB ================= -->
+        <div id="tab-setup" class="tab-pane hidden space-y-4">
+            <div class="bg-[#12141a] border border-[#2a2e37] rounded-lg p-4 space-y-4">
+                <h3 class="text-xs text-gray-300 font-bold tracking-widest uppercase mb-4 border-b border-[#2a2e37] pb-2">Companion API</h3>
+                
                 <div>
-                    <label class="block text-[10px] text-zinc-400 mb-1 font-mono">Companion Server IP / Hostname</label>
-                    <input type="text" id="setup-ip" class="w-full bg-black border border-zinc-700 rounded px-3 py-2 text-xs font-mono text-white" placeholder="192.168.1.100">
+                    <label class="block text-[10px] text-gray-500 mb-1 font-bold">IP ADDRESS</label>
+                    <input type="text" id="cfg-ip" placeholder="192.168.1.100" class="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1 font-bold">PORT</label>
+                    <input type="number" id="cfg-port" placeholder="8000" class="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                 </div>
                 
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] text-zinc-400 mb-1 font-mono">Port</label>
-                        <input type="number" id="setup-port" class="w-full bg-black border border-zinc-700 rounded px-3 py-2 text-xs font-mono text-white" placeholder="8000">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-zinc-400 mb-1 font-mono">Protocol</label>
-                        <select id="setup-proto" class="w-full bg-black border border-zinc-700 rounded px-2 py-2 text-xs font-mono text-white">
-                            <option value="http">HTTP</option>
-                            <option value="https">HTTPS</option>
-                        </select>
-                    </div>
+                <div class="pt-4">
+                    <p class="text-[10px] text-gray-500 leading-relaxed mb-4">
+                        App uses direct REST API calls. Ensure Companion has the HTTP/REST API enabled in settings. Variables polled: 
+                        <span class="font-mono text-gray-400">ma2_status</span>, <span class="font-mono text-gray-400">reso_cue</span>, 
+                        <span class="font-mono text-gray-400">wing_level</span>, <span class="font-mono text-gray-400">mp3_cue</span>.
+                    </p>
+                    <button onclick="saveConfig()" class="hw-btn w-full py-4 text-sm font-black text-white bg-blue-700 border-blue-600 shadow-lg">SAVE CONFIG</button>
                 </div>
-
-                <div>
-                    <label class="block text-[10px] text-zinc-400 mb-1 font-mono">API Key (Optional)</label>
-                    <input type="password" id="setup-key" class="w-full bg-black border border-zinc-700 rounded px-3 py-2 text-xs font-mono text-white" placeholder="••••••••••••">
-                </div>
-
-                <div class="flex space-x-2 pt-2">
-                    <button onclick="saveSetup()" class="btn-hw btn-dark flex-1 py-2.5 text-xs text-green-400">SAVE CONFIG</button>
-                    <button onclick="testPing()" class="btn-hw btn-dark flex-1 py-2.5 text-xs text-cyan-400">TEST PING</button>
-                </div>
-            </div>
-
-            <!-- Button Mapping Table Reference -->
-            <div class="bg-zinc-900 p-3 rounded-lg border border-zinc-800 space-y-1 font-mono text-[10px]">
-                <div class="font-bold text-zinc-400 border-b border-zinc-800 pb-1">DEFAULT REST MAP REFERENCE</div>
-                <div class="text-zinc-500 flex justify-between"><span>MA2 Exec 1</span><span>/api/location/1/0/1/press</span></div>
-                <div class="text-zinc-500 flex justify-between"><span>Wing Main LR</span><span>/api/location/1/0/2/press</span></div>
-                <div class="text-zinc-500 flex justify-between"><span>Reso Column 1</span><span>/api/location/1/0/3/press</span></div>
-                <div class="text-zinc-500 flex justify-between"><span>MultiPlay GO</span><span>/api/location/1/0/4/press</span></div>
             </div>
         </div>
 
     </main>
 
-    <!-- LIVE FEEDBACK FOOTER -->
-    <footer class="p-2 border-t border-zinc-800 bg-zinc-950 shrink-0">
-        <div id="console-log" class="bg-black rounded border border-zinc-800 p-2 h-16 overflow-y-auto font-mono text-[10px] space-y-0.5 hide-scroll">
-            <div class="text-zinc-500">[SYSTEM] Show Control Pro Ready.</div>
-        </div>
-    </footer>
-
     <script>
-        // --- Telegram SDK Integration ---
+        // --- Telegram Integration ---
         let tg;
         try {
             tg = window.Telegram.WebApp;
             tg.expand();
             tg.ready();
-            if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                document.getElementById('user-greeting').innerText = `| ${tg.initDataUnsafe.user.first_name}`;
+        } catch (e) {
+            console.warn("Running outside Telegram");
+        }
+
+        function haptic(style = 'light') {
+            if(tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred(style);
             }
-        } catch(e) {
-            console.log("Running outside Telegram environment");
         }
 
         // --- Configuration & State ---
-        let config = {
-            ip: '127.0.0.1',
-            port: '8000',
-            proto: 'http',
-            key: ''
-        };
+        let config = { ip: '127.0.0.1', port: 8000 };
+        const saved = localStorage.getItem('avctrl_config2');
+        if(saved) config = { ...config, ...JSON.parse(saved) };
+        let pollIntervalId = null;
 
-        let ma2CurrentPage = 1;
-
-        // --- On Load ---
         window.onload = () => {
-            const savedIP = localStorage.getItem('sc_ip');
-            const savedPort = localStorage.getItem('sc_port');
-            const savedProto = localStorage.getItem('sc_proto');
-            const savedKey = localStorage.getItem('sc_key');
-
-            if(savedIP) config.ip = savedIP;
-            if(savedPort) config.port = savedPort;
-            if(savedProto) config.proto = savedProto;
-            if(savedKey) config.key = savedKey;
-
-            document.getElementById('setup-ip').value = config.ip;
-            document.getElementById('setup-port').value = config.port;
-            document.getElementById('setup-proto').value = config.proto;
-            document.getElementById('setup-key').value = config.key;
-
-            testPing();
+            document.getElementById('cfg-ip').value = config.ip;
+            document.getElementById('cfg-port').value = config.port;
+            startEngine();
         };
 
-        function saveSetup() {
-            config.ip = document.getElementById('setup-ip').value || '127.0.0.1';
-            config.port = document.getElementById('setup-port').value || '8000';
-            config.proto = document.getElementById('setup-proto').value || 'http';
-            config.key = document.getElementById('setup-key').value || '';
+        // --- Core HTTP Engine ---
+        async function fetchAPI(path, method = 'GET', bodyObj = null) {
+            if(!config.ip) return null;
+            const url = `http://${config.ip}:${config.port}${path}`;
+            const headers = { 'Content-Type': 'application/json' };
+            
+            const options = { method, headers };
+            if(bodyObj) options.body = JSON.stringify(bodyObj);
+            
+            try {
+                // Short timeout for fast UI responsiveness
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 2000);
+                options.signal = controller.signal;
 
-            localStorage.setItem('sc_ip', config.ip);
-            localStorage.setItem('sc_port', config.port);
-            localStorage.setItem('sc_proto', config.proto);
-            localStorage.setItem('sc_key', config.key);
+                const res = await fetch(url, options);
+                clearTimeout(id);
 
-            haptic('success');
-            log(`Setup saved (${config.proto}://${config.ip}:${config.port})`, 'text-green-400');
-            testPing();
+                if(!res.ok) throw new Error(res.status);
+                const txt = await res.text();
+                return txt ? JSON.parse(txt) : {};
+            } catch (err) {
+                throw err;
+            }
         }
 
-        // --- REST API & Communication ---
-        async function triggerCompanionApi(page, row, col, value = null) {
-            haptic('light');
-            const baseUrl = `${config.proto}://${config.ip}:${config.port}`;
-            const endpoint = `${baseUrl}/api/location/${page}/${row}/${col}/press`;
+        // --- UI & Polling ---
+        function setLed(isOnline) {
+            const led = document.getElementById('sys-led');
+            const txt = document.getElementById('sys-status');
+            if(isOnline) {
+                led.className = 'led led-on';
+                txt.innerText = 'ONLINE';
+                txt.className = 'text-[11px] font-mono font-bold text-green-400 mt-0.5';
+            } else {
+                led.className = 'led led-off';
+                txt.innerText = 'OFFLINE';
+                txt.className = 'text-[11px] font-mono font-bold text-red-500 mt-0.5';
+            }
+        }
+
+        async function pollData() {
+            const vars = [
+                { id: 'disp-ma2', name: 'ma2_status' },
+                { id: 'disp-reso', name: 'reso_cue' },
+                { id: 'disp-wing', name: 'wing_level' },
+                { id: 'disp-mp3', name: 'mp3_cue' }
+            ];
 
             try {
-                // Firing Fetch request to Companion
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                const promises = vars.map(v => fetchAPI(`/api/custom-variable/${v.name}`));
+                const results = await Promise.all(promises);
+                
+                results.forEach((res, i) => {
+                    const val = (res && res.value !== undefined) ? res.value : '--';
+                    document.getElementById(vars[i].id).innerText = val;
+                    // Mirror MultiPlay to its dedicated tab text area
+                    if (vars[i].name === 'mp3_cue') {
+                        document.getElementById('disp-mp3-full').innerText = val !== '--' ? val : 'Awaiting data...';
+                    }
                 });
-                log(`API TX -> P${page}/R${row}/C${col}`, 'text-cyan-400');
-            } catch(err) {
-                // Graceful fallback for offline demo / local testing
-                log(`TX -> P${page}/R${row}/C${col} (Offline Sim)`, 'text-zinc-500');
+                setLed(true);
+            } catch (error) {
+                setLed(false);
             }
         }
 
-        function sendCmd(software, action, val = null) {
+        function startEngine() {
+            if(pollIntervalId) clearInterval(pollIntervalId);
+            pollData();
+            pollIntervalId = setInterval(pollData, 1500);
+        }
+
+        // --- Actions (Triggers & Faders) ---
+        function btn(page, row, col) {
             haptic('medium');
-            const msg = val !== null ? `${software}: ${action} [${val}]` : `${software}: ${action}`;
-            log(`CMD -> ${msg}`, 'text-yellow-400');
+            fetchAPI(`/api/location/${page}/${row}/${col}/press`, 'POST').catch(e => console.warn('Button API Err', e));
         }
 
-        function testPing() {
-            const led = document.getElementById('conn-led');
-            const statusText = document.getElementById('conn-status-text');
-            const pingText = document.getElementById('ping-text');
-
-            led.className = "led-dot led-yellow";
-            statusText.innerText = "CHECKING";
-
-            const start = Date.now();
-            setTimeout(() => {
-                const latency = Date.now() - start;
-                led.className = "led-dot led-green";
-                statusText.innerText = "CONNECTED";
-                pingText.innerText = `${latency}ms`;
-                log(`Ping Success: Companion REST Online (${latency}ms)`, 'text-green-400');
-            }, 120);
+        // Trailing-edge Throttle for Faders (Analog data)
+        function throttleTrailing(func, limit) {
+            let timeout;
+            let lastRan;
+            return function(...args) {
+                if (!lastRan) {
+                    func.apply(this, args);
+                    lastRan = Date.now();
+                } else {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(this, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            }
         }
 
-        // --- Helper UI Functions ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(el => {
-                el.classList.remove('border-cyan-400', 'text-cyan-400');
-                el.classList.add('border-transparent', 'text-zinc-400');
-            });
+        // Fader transmission (throttle 100ms)
+        const sendAnalog = throttleTrailing((varName, value) => {
+            fetchAPI(`/api/custom-variable/${varName}`, 'PUT', { value }).catch(()=>{});
+        }, 100);
 
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            const active = document.getElementById(`nav-${tabId}`);
-            active.classList.remove('border-transparent', 'text-zinc-400');
-            active.classList.add('border-cyan-400', 'text-cyan-400');
+        // --- UI Navigation ---
+        function nav(tabId) {
             haptic('light');
-        }
-
-        function log(text, colorClass = 'text-zinc-300') {
-            const consoleBox = document.getElementById('console-log');
-            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const line = document.createElement('div');
-            line.className = colorClass;
-            line.innerHTML = `<span class="text-zinc-600 mr-1">[${time}]</span>${text}`;
-            consoleBox.appendChild(line);
-            consoleBox.scrollTop = consoleBox.scrollHeight;
-        }
-
-        function haptic(type = 'medium') {
-            if (tg && tg.HapticFeedback) {
-                if (type === 'success' || type === 'error') tg.HapticFeedback.notificationOccurred(type);
-                else tg.HapticFeedback.impactOccurred(type);
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            
+            // Reset nav buttons
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('border-white', 'text-white');
+                el.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Show active tab
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+            if(activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-gray-500');
+                
+                // Keep theme coloring for active nav based on tab
+                if(tabId === 'ma2') activeBtn.classList.add('border-white', 'text-yellow-600');
+                else if (tabId === 'reso') activeBtn.classList.add('border-white', 'text-pink-500');
+                else if (tabId === 'wing') activeBtn.classList.add('border-white', 'text-cyan-500');
+                else if (tabId === 'mp3') activeBtn.classList.add('border-white', 'text-green-500');
+                else activeBtn.classList.add('border-white', 'text-white');
             }
         }
 
-        function confirmPanic() {
-            haptic('error');
-            if(confirm("🚨 WARNING: Execute Global Emergency Panic Stop?")) {
-                sendCmd('System', 'GLOBAL PANIC EXECUTED');
-            }
-        }
-
-        function changeMa2Page(delta) {
-            ma2CurrentPage = Math.max(1, ma2CurrentPage + delta);
-            document.getElementById('ma2-page-lbl').innerText = `PG ${ma2CurrentPage}`;
-            sendCmd('MA2', `Page Changed to ${ma2CurrentPage}`);
-        }
-
-        function adjustEncoder(attr, delta) {
-            sendCmd('MA2', `Encoder ${attr}`, `${delta > 0 ? '+' : ''}${delta}`);
-        }
-
-        function toggleMute(btn) {
-            btn.classList.toggle('btn-danger');
-            btn.classList.toggle('btn-dark');
+        function saveConfig() {
             haptic('heavy');
-        }
-
-        function toggleSolo(btn) {
-            btn.classList.toggle('btn-ma2');
-            btn.classList.toggle('btn-dark');
-            haptic('medium');
-        }
-
-        function selectResoGroup(grp) {
-            sendCmd('Resolume', `Group ${grp} Selected`);
+            config.ip = document.getElementById('cfg-ip').value;
+            config.port = document.getElementById('cfg-port').value || 8000;
+            localStorage.setItem('avctrl_config2', JSON.stringify(config));
+            
+            setLed(false);
+            startEngine();
+            
+            if(tg) tg.showAlert("Configuration Saved. Attempting connection.");
+            else alert("Configuration Saved.");
+            
+            nav('main');
         }
     </script>
 </body>
