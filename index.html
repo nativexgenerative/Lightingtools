@@ -3,315 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MA2 Toolkit: Show & GDTF Converter</title>
-    <!-- Telegram WebApp API -->
+    <title>Direct Companion TMA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- JSZip for packaging outputs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- Pako for .show.gz compression -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    
     <style>
-        body { background-color: var(--tg-theme-bg-color, #1A1A1B); color: var(--tg-theme-text-color, #E1E1E1); font-family: 'Courier New', Courier, monospace; padding: 15px; margin: 0; }
-        .container { background-color: var(--tg-theme-secondary-bg-color, #252526); padding: 15px; border-radius: 8px; border: 1px solid #FFC800; max-width: 520px; margin: auto; }
-        h2 { color: #FFC800; text-align: center; margin-top: 0; font-size: 18px; }
-        .tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #444; }
-        .tab { flex: 1; padding: 10px; text-align: center; background: #1A1A1B; color: #888; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .tab.active { background: #FFC800; color: #000; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-        .panel { display: none; }
-        .panel.active { display: block; }
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 12px; color: #FFC800; }
-        select, input[type="file"] { width: 100%; padding: 8px; margin-top: 4px; background: #111; color: #FFC800; border: 1px solid #444; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
-        button { width: 100%; padding: 12px; margin-top: 15px; background-color: #FFC800; color: #000; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; }
-        button:active { background-color: #e6b400; }
-        #status, #gdtfStatus { margin-top: 10px; text-align: center; font-size: 12px; white-space: pre-line; word-break: break-all; }
-        .chart-container { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #444; background: #111; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
-        th, td { padding: 6px; border-bottom: 1px solid #222; }
-        th { background: #222; color: #FFC800; position: sticky; top: 0; }
-        .badge { background: #FFC800; color: #000; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; margin-left: 5px; }
+        body {
+            background-color: var(--tg-theme-bg-color, #121212);
+            color: var(--tg-theme-text-color, #ffffff);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        button {
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none; border-radius: 10px; padding: 18px;
+            font-size: 16px; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: opacity 0.1s;
+        }
+        button:active { opacity: 0.7; transform: scale(0.98); }
+        .console-box {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; border-radius: 8px; font-family: monospace;
+            font-size: 14px; min-height: 50px;
+            white-space: pre-wrap;
+        }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .online { background-color: #4CAF50; }
+        .offline { background-color: #F44336; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h2>grandMA2 TOOLKIT</h2>
-        
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab(0)">Show Converter</div>
-            <div class="tab" onclick="switchTab(1)">GDTF Fixture</div>
-        </div>
-
-        <!-- TAB 1: SHOW & XML CONVERTER -->
-        <div class="panel active" id="panel0">
-            <label>Select Showfile (.show.gz) or XMLs <span class="badge">BINARY SAFE</span></label>
-            <input type="file" id="fileInput" multiple accept="*/*">
-            
-            <label>Target grandMA2 Version</label>
-            <select id="versionSelect">
-                <option value="3.9.60">v3.9.60.x</option>
-                <option value="3.9.61" selected>v3.9.61.x</option>
-                <option value="3.9.62">v3.9.62.x</option>
-                <option value="3.9.63">v3.9.63.x</option>
-            </select>
-            
-            <button onclick="processFiles()">CONVERT & SAVE SHOW</button>
-            <div id="status"></div>
-        </div>
-
-        <!-- TAB 2: GDTF TO MA2 CONVERTER -->
-        <div class="panel" id="panel1">
-            <label>Select .gdtf Fixture File</label>
-            <input type="file" id="gdtfInput" accept="*/*">
-            
-            <button onclick="processGDTF()">PARSE & SAVE MA2 PROFILE</button>
-            <div id="gdtfStatus"></div>
-            
-            <div id="fixtureInfo" style="margin-top:10px; font-size:12px; display:none;">
-                <b id="fxName" style="color:#FFC800;"></b><br/>
-                <span id="fxModes"></span>
-            </div>
-
-            <div class="chart-container" id="chartWrapper" style="display:none;">
-                <table id="dmxTable">
-                    <thead><tr><th>Offset</th><th>Attribute</th><th>MA2 Parameter</th></tr></thead>
-                    <tbody id="dmxBody"></tbody>
-                </table>
-            </div>
-        </div>
+    <div class="header">
+        <h2>Show Control</h2>
+        <div><span id="dot" class="status-dot offline"></span> <span id="conn-text">Checking...</span></div>
     </div>
+
+    <!-- UI Buttons -->
+    <button onclick="pressButton(1, 0, 1)">💡 grandMA2: Main GO</button>
+    <button onclick="pressButton(1, 0, 2)">📺 Resolume: Next Clip</button>
+    <button onclick="pressButton(1, 0, 3)">🎵 MultiPlay: GO</button>
+    <button onclick="pressButton(1, 0, 4)">🎚️ Wing: Unmute LR</button>
+
+    <h3 style="margin-top: 20px;">System Feedback</h3>
+    <div id="feedback" class="console-box">Initializing connection...</div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        if (tg) tg.expand();
+        tg.expand();
 
-        function switchTab(index) {
-            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
-            document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === index));
-        }
+        // --- CONFIGURATION ---
+        // Your public-facing Companion HTTPS address
+        const COMPANION_URL = 'https://your-companion-domain-or-ip:8443'; 
+        
+        // If you generated a REST API Key in Companion Settings, add it here
+        const API_HEADERS = {
+            'Content-Type': 'application/json'
+            // 'Authorization': 'Bearer YOUR_REST_API_KEY_HERE' 
+        };
 
-        // --- DOWNLOAD / SHARE HANDLER ---
-        async function saveAndDownload(zip, filename, statusDiv, successMsg) {
+        const feedbackDiv = document.getElementById('feedback');
+        const dot = document.getElementById('dot');
+        const connText = document.getElementById('conn-text');
+
+        // --- COMMAND TRANSMISSION ---
+        async function pressButton(page, row, col) {
             try {
-                const blob = await zip.generateAsync({type:"blob"});
-                const file = new File([blob], filename, {type: "application/zip"});
+                const url = `${COMPANION_URL}/api/location/${page}/${row}/${col}/press`;
+                const response = await fetch(url, { method: 'POST', headers: API_HEADERS });
                 
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ title: filename, files: [file] });
-                    statusDiv.innerText = successMsg + "\n(Saved to device via Share Menu)";
+                if (response.ok) {
+                    tg.HapticFeedback.impactOccurred('medium'); 
+                    logFeedback(`Success: Triggered Page ${page} / R${row} / C${col}`);
                 } else {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => { a.remove(); window.URL.revokeObjectURL(url); }, 100);
-                    statusDiv.innerText = successMsg;
+                    throw new Error(`HTTP ${response.status}`);
                 }
-                statusDiv.style.color = "lightgreen";
-                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            } catch (err) {
-                statusDiv.innerText = "Download error: " + err.message;
-                statusDiv.style.color = "red";
+            } catch (error) {
+                tg.HapticFeedback.notificationOccurred('error');
+                logFeedback(`Error sending command: ${error.message}`);
             }
         }
 
-        // --- BINARY-SAFE VERSION REWRITE ENGINE ---
-        // Uses callback functions to prevent Javascript $13 capture group corruption
-        function updateMA2VersionString(text, vMaj, vMin, vStr) {
-            let updated = text;
-            updated = updated.replace(/(major_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vMaj + p2);
-            updated = updated.replace(/(minor_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vMin + p2);
-            updated = updated.replace(/(stream_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vStr + p2);
-            updated = updated.replace(/(build_vers=["'])\d+(["'])/gi, (m, p1, p2) => p1 + vStr + p2);
-            updated = updated.replace(/(http:\/\/schemas\.malighting\.de\/grandma2\/xml\/)\d+\.\d+\.\d+(\/MA\.xsd)/gi, 
-                (m, p1, p2) => p1 + vMaj + "." + vMin + "." + vStr + p2);
-            return updated;
-        }
-
-        async function processFiles() {
-            const fileInput = document.getElementById('fileInput');
-            const versionParts = document.getElementById('versionSelect').value.split('.');
-            const statusDiv = document.getElementById('status');
-            
-            if (fileInput.files.length === 0) {
-                statusDiv.innerText = "Error: Please select files first.";
-                statusDiv.style.color = "red";
-                return;
-            }
-
-            const [vMaj, vMin, vStr] = versionParts;
-            const zip = new JSZip();
-            let processedCount = 0;
-
-            statusDiv.innerText = "Processing files securely...";
-            statusDiv.style.color = "#FFC800";
-
-            for (let i = 0; i < fileInput.files.length; i++) {
-                try {
-                    const file = fileInput.files[i];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const fname = file.name;
-                    const fnameLower = fname.toLowerCase();
-
-                    if (fnameLower.endsWith('.gz') || fnameLower.endsWith('.show') || fnameLower.endsWith('.show.gz')) {
-                        // 1. Decompress
-                        let decompressedBytes;
-                        try { decompressedBytes = pako.ungzip(new Uint8Array(arrayBuffer)); } 
-                        catch (e) { decompressedBytes = pako.inflate(new Uint8Array(arrayBuffer)); }
-                        
-                        // 2. Convert to binary string chunk-by-chunk to PRESERVE all binary data
-                        let binaryStr = "";
-                        const chunkSize = 60000;
-                        for (let j = 0; j < decompressedBytes.length; j += chunkSize) {
-                            binaryStr += String.fromCharCode.apply(null, decompressedBytes.subarray(j, j + chunkSize));
-                        }
-
-                        // 3. Perform version string replacements on the safe binary string
-                        let convertedStr = updateMA2VersionString(binaryStr, vMaj, vMin, vStr);
-
-                        // 4. Convert perfectly back to Uint8Array bytes
-                        const newBytes = new Uint8Array(convertedStr.length);
-                        for (let j = 0; j < convertedStr.length; j++) {
-                            newBytes[j] = convertedStr.charCodeAt(j) & 0xFF;
-                        }
-
-                        // 5. Re-compress strictly as GZIP (which the console requires)
-                        const recompressed = pako.gzip(newBytes, { level: 9 });
-                        zip.file(fname, recompressed);
-                        processedCount++;
-
-                    } else if (fnameLower.endsWith('.xml')) {
-                        // XMLs are pure text, standard TextDecoder is safe here
-                        let text = new TextDecoder('utf-8').decode(arrayBuffer);
-                        let convertedText = updateMA2VersionString(text, vMaj, vMin, vStr);
-                        zip.file(fname, convertedText);
-                        processedCount++;
-                    }
-                } catch (fileErr) {
-                    console.error(`Failed on ${fileInput.files[i].name}:`, fileErr);
-                }
-            }
-
-            if (processedCount > 0) {
-                const filename = `MA2_Show_v${vMaj}.${vMin}.${vStr}.zip`;
-                await saveAndDownload(zip, filename, statusDiv, `Success! Converted ${processedCount} file(s) to v${vMaj}.${vMin}.${vStr}.`);
-            } else {
-                statusDiv.innerText = "Error: Selected files could not be read or converted.";
-                statusDiv.style.color = "red";
-            }
-        }
-
-        // --- GDTF PARSER ---
-        function mapGdtfToMa2(gdtfAttr) {
-            if (!gdtfAttr) return "DUMMY";
-            const map = {
-                "Dimmer": "DIM", "Pan": "PAN", "Tilt": "TILT",
-                "ColorAdd_R": "COLORRGB1", "ColorAdd_G": "COLORRGB2", 
-                "ColorAdd_B": "COLORRGB3", "ColorAdd_W": "COLORRGB4",
-                "ColorAdd_C": "COLORRGB5", "ColorAdd_M": "COLORRGB6", "ColorAdd_Y": "COLORRGB7",
-                "Zoom": "ZOOM", "Focus": "FOCUS", "Iris": "IRIS",
-                "Gobo1": "GOBO1", "Gobo1Pos": "GOBO1_POS", "Gobo2": "GOBO2",
-                "Shutter": "SHUTTER", "Strobe": "SHUTTER",
-                "ColorMacro": "COLOR1", "CTO": "CTO", "CTC": "CTC"
-            };
-            return map[gdtfAttr] || gdtfAttr.toUpperCase().replace(/[^A-Z0-9_]/g, '');
-        }
-
-        async function processGDTF() {
-            const fileInput = document.getElementById('gdtfInput');
-            const statusDiv = document.getElementById('gdtfStatus');
-            
-            if (fileInput.files.length === 0) {
-                statusDiv.innerText = "Error: Please select a GDTF file.";
-                statusDiv.style.color = "red";
-                return;
-            }
-
-            statusDiv.innerText = "Parsing GDTF structure...";
-            statusDiv.style.color = "#FFC800";
-
+        // --- STATUS FEEDBACK (POLLING) ---
+        // To get feedback without a WebSocket relay, we poll the state of a specific Companion button
+        // Set up a button in Companion (e.g., Page 1, Row 1, Col 1) specifically to display system status text.
+        async function pollStatus() {
             try {
-                const file = fileInput.files[0];
-                const zip = new JSZip();
-                const zipContent = await zip.loadAsync(file);
-
-                let descFile = zipContent.file("description.xml");
-                if (!descFile) throw new Error("description.xml missing inside archive.");
-
-                const xmlText = await descFile.async("text");
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-                const fixtureType = xmlDoc.querySelector("FixtureType");
-                const fxNameVal = fixtureType ? (fixtureType.getAttribute("Name") || fixtureType.getAttribute("LongName")) : file.name.split('.')[0];
+                // Fetch the properties of the status button (Page 1, Row 1, Col 1)
+                const url = `${COMPANION_URL}/api/location/1/1/1`;
+                const response = await fetch(url, { method: 'GET', headers: API_HEADERS });
                 
-                const dmxModes = xmlDoc.querySelectorAll("DMXMode");
-                let modeNames = [];
-                let ma2DmxModesXML = "";
-                let tableRows = "";
-
-                dmxModes.forEach((mode, modeIdx) => {
-                    let modeName = mode.getAttribute("Name") || `Mode ${modeIdx + 1}`;
-                    modeNames.push(modeName);
+                if (response.ok) {
+                    const data = await response.json();
+                    setOnlineState(true);
                     
-                    let channelsXML = "";
-                    const dmxChannels = mode.querySelectorAll("DMXChannel");
-                    
-                    dmxChannels.forEach((ch, chIdx) => {
-                        let offsetStr = ch.getAttribute("Offset") || "";
-                        if (!offsetStr || offsetStr === "None") return;
-                        
-                        let logicalChan = ch.querySelector("LogicalChannel");
-                        let gdtfAttr = logicalChan ? logicalChan.getAttribute("Attribute") : "Dummy";
-                        let ma2Attr = mapGdtfToMa2(gdtfAttr);
-                        
-                        channelsXML += `\n          <DMXChannel index="${chIdx}" attribute="${ma2Attr}" offset="${offsetStr}" default="0" highlight="100"/>`;
-                        
-                        if(modeIdx === 0) {
-                            tableRows += `<tr><td>${offsetStr}</td><td>${gdtfAttr}</td><td style="color:#FFC800">${ma2Attr}</td></tr>`;
-                        }
-                    });
-
-                    ma2DmxModesXML += `
-      <DMXMode index="${modeIdx}" name="${modeName}">
-        <DMXChannels>${channelsXML}
-        </DMXChannels>
-      </DMXMode>`;
-                });
-
-                document.getElementById('fxName').innerText = `Fixture: ${fxNameVal}`;
-                document.getElementById('fxModes').innerText = `Modes Built: ${modeNames.join(', ')}`;
-                document.getElementById('fixtureInfo').style.display = "block";
-                document.getElementById('dmxBody').innerHTML = tableRows;
-                document.getElementById('chartWrapper').style.display = "block";
-
-                const ma2ProfileXML = `<?xml version="1.0" encoding="utf-8"?>
-<MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.61/MA.xsd" major_vers="3" minor_vers="9" stream_vers="61">
-  <FixtureType index="0" name="${fxNameVal}" mode="${modeNames[0]}">
-    <Info>Auto-converted from GDTF</Info>
-    <Modules>
-      <Module index="0" name="Main" class="Headmover" beamtype="Wash" />
-    </Modules>
-    <Instances>
-      <Instance index="0" module_index="0" />
-    </Instances>
-    <DMXModes>${ma2DmxModesXML}
-    </DMXModes>
-  </FixtureType>
-</MA>`;
-
-                const outZip = new JSZip();
-                outZip.file(`${fxNameVal}_MA2.xml`, ma2ProfileXML);
-                
-                await saveAndDownload(outZip, `${fxNameVal}_MA2.zip`, statusDiv, `Success! Built MA2 fixture profile.`);
-
-            } catch (err) {
-                statusDiv.innerText = "GDTF Parse Error: " + err.message;
-                statusDiv.style.color = "red";
+                    // Display the text currently rendered on that Companion button
+                    if(data && data.text) {
+                        feedbackDiv.innerText = data.text.replace(/\\n/g, '\n');
+                    }
+                } else {
+                    setOnlineState(false);
+                }
+            } catch (error) {
+                setOnlineState(false);
             }
         }
+
+        function setOnlineState(isOnline) {
+            dot.className = isOnline ? 'status-dot online' : 'status-dot offline';
+            connText.innerText = isOnline ? 'Online' : 'Offline';
+        }
+
+        function logFeedback(msg) {
+            feedbackDiv.innerText = msg;
+        }
+
+        // Check connection & gear status every 1.5 seconds
+        setInterval(pollStatus, 1500);
+        pollStatus(); 
     </script>
 </body>
 </html>
