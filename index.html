@@ -3,632 +3,714 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Show Control Pro</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SortableJS -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-
+    <title>PROCTRL - Show Control</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --ma2: #ffd700;
-            --reso: #ff00ff;
-            --wing: #00ffff;
-            --mp3: #00ff00;
+            --bg-main: #0a0a0c;
+            --bg-panel: #141417;
+            --bg-card: #1c1c21;
+            --text-main: #ffffff;
+            --text-muted: #808089;
+            --accent-ma2: #d4af37;
+            --accent-reso: #ff007f;
+            --accent-wing: #00e5ff;
+            --accent-mplay: #00ff40;
+            --border-color: rgba(255, 255, 255, 0.08);
         }
 
-        body {
-            background-color: #050505;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overscroll-behavior: none;
+        * {
+            box-sizing: border-box;
+            -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-        /* Hardware Button Styling */
-        .hw-btn {
-            background: linear-gradient(180deg, #222 0%, #111 100%);
-            border: 1px solid #333;
-            border-bottom-width: 4px;
-            border-radius: 6px;
-            font-weight: 800;
+        /* Top Header */
+        .header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+        .logo span { color: #2481cc; }
+
+        .status-pill {
             display: flex;
             align-items: center;
-            justify-content: center;
-            transition: all 0.05s ease;
+            gap: 6px;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .online { background-color: #00ff40; box-shadow: 0 0 6px #00ff40; }
+        .offline { background-color: #ff3333; box-shadow: 0 0 6px #ff3333; }
+        .status-text { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+
+        /* Main Content Area */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+            padding-bottom: 90px;
+        }
+
+        .tab-content { display: none; flex-direction: column; gap: 12px; }
+        .tab-content.active { display: flex; }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 6px 4px 20px 4px;
+            z-index: 50;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
-            color: #ddd;
+            letter-spacing: 0.5px;
+            padding: 8px 6px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .nav-btn svg { width: 20px; height: 20px; }
+        .nav-btn.active { color: var(--text-main); background-color: rgba(255,255,255,0.06); }
+        .nav-btn.active.nav-ma2 { color: var(--accent-ma2); }
+        .nav-btn.active.nav-reso { color: var(--accent-reso); }
+        .nav-btn.active.nav-wing { color: var(--accent-wing); }
+        .nav-btn.active.nav-mplay { color: var(--accent-mplay); }
+
+        /* Hardware UI Elements */
+        .hw-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 6px;
+            padding: 14px 8px;
+            font-weight: 700;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+            transition: transform 0.05s, background 0.05s;
         }
         .hw-btn:active {
             transform: translateY(2px);
-            border-bottom-width: 2px;
-            background: #151515;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+            background: rgba(255,255,255,0.1);
         }
 
-        /* Color Accents */
-        .btn-ma2 { border-color: var(--ma2); color: var(--ma2); }
-        .btn-reso { border-color: var(--reso); color: var(--reso); }
-        .btn-wing { border-color: var(--wing); color: var(--wing); }
-        .btn-mp3 { border-color: var(--mp3); color: var(--mp3); }
-        .btn-sys { border-color: #ff3333; color: #fff; background: linear-gradient(180deg, #660000 0%, #440000 100%); }
+        .btn-go { background: linear-gradient(180deg, #163820 0%, #0a1f10 100%); border-color: #266138; color: #7effa3; }
+        .btn-stop { background: linear-gradient(180deg, #3d1717 0%, #1f0b0b 100%); border-color: #612626; color: #ff8585; }
+        
+        .ma2-btn { border-bottom: 2px solid var(--accent-ma2); }
+        .reso-btn { border-bottom: 2px solid var(--accent-reso); }
+        .wing-btn { border-bottom: 2px solid var(--accent-wing); }
+        .mplay-btn { border-bottom: 2px solid var(--accent-mplay); }
 
-        /* Vertical Faders */
-        .fader-vert {
-            -webkit-appearance: slider-vertical;
-            appearance: slider-vertical;
-            width: 32px;
-            height: 180px;
-            background: #000;
-            border-radius: 4px;
-            border: 1px solid #222;
-            outline: none;
-            box-shadow: inset 0 4px 8px rgba(0,0,0,1);
-            margin: 8px 0;
+        /* Custom Fader */
+        .fader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--bg-panel);
+            padding: 10px 6px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            height: 200px;
+            flex: 1;
+            min-width: 60px;
         }
-        .fader-vert::-webkit-slider-thumb {
+        
+        .fader-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .fader-track-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        input[type=range] {
             -webkit-appearance: none;
             appearance: none;
-            width: 28px;
+            width: 140px;
             height: 36px;
-            background: linear-gradient(180deg, #444 0%, #222 100%);
-            border: 2px solid #888;
-            border-radius: 4px;
+            background: transparent;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin: -18px 0 0 -70px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.8);
         }
 
-        .fad-ma2::-webkit-slider-thumb { border-color: var(--ma2); }
-        .fad-reso::-webkit-slider-thumb { border-color: var(--reso); }
-        .fad-wing::-webkit-slider-thumb { border-color: var(--wing); }
-
-        /* Edit Mode Styles */
-        body.edit-mode .sortable-group > div {
-            border: 1px dashed #555;
-            background: rgba(255,255,255,0.05);
+        input[type=range]:focus { outline: none; }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            height: 32px;
+            width: 42px;
             border-radius: 4px;
-            cursor: grab;
+            background: linear-gradient(180deg, #3a3a42 0%, #222226 100%);
+            border: 1px solid #111;
+            border-top: 1px solid #555;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+            -webkit-appearance: none;
+            margin-top: -14px;
         }
-        body.edit-mode .hw-btn, body.edit-mode input { pointer-events: none; }
 
-        .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .led-on { background-color: var(--mp3); box-shadow: 0 0 8px var(--mp3); }
-        .led-off { background-color: #ff3333; box-shadow: 0 0 8px #ff3333; }
+        input[type=range].fader-ma2::-webkit-slider-thumb { border-bottom: 2px solid var(--accent-ma2); }
+        input[type=range].fader-reso::-webkit-slider-thumb { border-bottom: 2px solid var(--accent-reso); }
+        input[type=range].fader-wing::-webkit-slider-thumb { border-bottom: 2px solid var(--accent-wing); }
+        input[type=range].fader-master::-webkit-slider-thumb { border-bottom: 2px solid #ff3333; background: linear-gradient(180deg, #4a2222 0%, #221111 100%); }
+
+        /* Status Panels */
+        .status-panel {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid var(--text-muted);
+            transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 65px;
+            border: 1px solid var(--border-color);
+            border-left-width: 4px;
+        }
+        .status-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 3px;
+        }
+        .status-text {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* Setup Form Elements */
+        .setup-input {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .setup-label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #222; transition: .2s; border-radius: 22px; border: 1px solid var(--border-color);
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px;
+            background-color: white; transition: .2s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2481cc; }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        /* Grid Utilities */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+        .flex-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+        
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 8px 0 4px 0;
+        }
     </style>
 </head>
-<body class="flex flex-col h-screen overflow-hidden text-xs">
+<body>
 
-    <!-- HEADER -->
-    <header class="h-14 bg-[#111] border-b border-[#222] flex justify-between items-center px-4 shrink-0 z-50">
-        <div class="font-black tracking-widest text-lg">PRO<span class="text-blue-500">CTRL</span></div>
-        <div class="flex items-center space-x-3">
-            <button id="edit-btn" onclick="toggleEdit()" class="px-3 py-1.5 rounded bg-[#222] border border-[#333] font-bold text-[10px] uppercase">Edit Layout</button>
-            <div class="bg-black px-2 py-1 rounded-full border border-[#222]">
-                <span id="sys-led" class="led led-off"></span>
-            </div>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">PRO<span>CTRL</span></div>
+        <div class="status-pill">
+            <span id="conn-dot" class="status-dot offline"></span>
+            <span id="conn-text" class="status-text">Offline</span>
         </div>
-    </header>
+    </div>
 
-    <!-- TAB CONTAINER -->
-    <main class="flex-1 relative overflow-y-auto overflow-x-hidden bg-[#0a0a0a]">
-        
-        <!-- ================= MAIN TAB ================= -->
-        <div id="tab-main" class="tab-pane flex flex-col p-3 space-y-4 min-h-full">
+    <!-- Content Area -->
+    <div class="content-area">
+
+        <!-- ==================== MAIN TAB ==================== -->
+        <div id="tab-main" class="tab-content active">
+            <div class="grid-2">
+                <button class="hw-btn btn-go" onclick="fire('99/1/1')">WAKE ON LAN</button>
+                <button class="hw-btn btn-stop" onclick="fire('99/2/4')">ALL BLACKOUT</button>
+            </div>
+
+            <div class="section-title">System Status Monitoring</div>
             
-            <!-- Status Panels -->
-            <div class="grid grid-cols-2 gap-3 sortable-group" id="grid-status">
-                <div class="bg-[#111] border border-[#222] rounded p-3">
-                    <div class="text-[10px] font-black text-[#ffd700] mb-1">MA2 STATUS</div>
-                    <div id="disp-stat_ma2" class="font-mono text-gray-400 truncate">Waiting...</div>
-                </div>
-                <div class="bg-[#111] border border-[#222] rounded p-3">
-                    <div class="text-[10px] font-black text-[#ff00ff] mb-1">RESO STATUS</div>
-                    <div id="disp-stat_reso" class="font-mono text-gray-400 truncate">Waiting...</div>
-                </div>
-                <div class="bg-[#111] border border-[#222] rounded p-3">
-                    <div class="text-[10px] font-black text-[#00ffff] mb-1">WING STATUS</div>
-                    <div id="disp-stat_wing" class="font-mono text-gray-400 truncate">Waiting...</div>
-                </div>
-                <div class="bg-[#111] border border-[#222] rounded p-3">
-                    <div class="text-[10px] font-black text-[#00ff00] mb-1">MPLAY STATUS</div>
-                    <div id="disp-stat_mp3" class="font-mono text-gray-400 truncate">Waiting...</div>
-                </div>
+            <div id="stat-ma2" class="status-panel" style="border-left-color: var(--accent-ma2);">
+                <div class="status-title">grandMA2 Status</div>
+                <div id="txt-ma2" class="status-text">Awaiting data...</div>
             </div>
-
-            <!-- Global Actions -->
-            <div class="grid grid-cols-2 gap-3 sortable-group mt-4" id="grid-main-actions">
-                <div class="col-span-2"><button onclick="fire('btn_wol')" class="hw-btn w-full py-4 text-sm">⚡ WAKE ON LAN</button></div>
-                <div><button onclick="fire('btn_bo_ma2')" class="hw-btn btn-sys w-full py-5">BO MA2</button></div>
-                <div><button onclick="fire('btn_bo_reso')" class="hw-btn btn-sys w-full py-5">BO RESO</button></div>
-                <div><button onclick="fire('btn_bo_wing')" class="hw-btn btn-sys w-full py-5">BO WING</button></div>
-                <div><button onclick="fire('btn_bo_all')" class="hw-btn btn-sys w-full py-5">BO ALL</button></div>
-            </div>
-        </div>
-
-        <!-- ================= MA2 TAB ================= -->
-        <div id="tab-ma2" class="tab-pane hidden flex-col p-3 space-y-4">
             
-            <!-- Encoders -->
-            <div class="bg-[#111] p-3 rounded border border-[#222]">
-                <div class="text-[10px] text-[#ffd700] font-bold mb-2">ENCODERS</div>
-                <div class="grid grid-cols-5 gap-2 sortable-group" id="grid-ma2-enc">
-                    <div class="flex flex-col space-y-2"><span class="text-center text-[9px] text-[#ffd700]">ENC 1</span>
-                        <button onclick="fire('enc_1_p')" class="hw-btn py-2 text-lg">+</button>
-                        <button onclick="fire('enc_1_m')" class="hw-btn py-2 text-lg">-</button></div>
-                    <div class="flex flex-col space-y-2"><span class="text-center text-[9px] text-[#ffd700]">ENC 2</span>
-                        <button onclick="fire('enc_2_p')" class="hw-btn py-2 text-lg">+</button>
-                        <button onclick="fire('enc_2_m')" class="hw-btn py-2 text-lg">-</button></div>
-                    <div class="flex flex-col space-y-2"><span class="text-center text-[9px] text-[#ffd700]">ENC 3</span>
-                        <button onclick="fire('enc_3_p')" class="hw-btn py-2 text-lg">+</button>
-                        <button onclick="fire('enc_3_m')" class="hw-btn py-2 text-lg">-</button></div>
-                    <div class="flex flex-col space-y-2"><span class="text-center text-[9px] text-[#ffd700]">ENC 4</span>
-                        <button onclick="fire('enc_4_p')" class="hw-btn py-2 text-lg">+</button>
-                        <button onclick="fire('enc_4_m')" class="hw-btn py-2 text-lg">-</button></div>
-                    <div class="flex flex-col space-y-2"><span class="text-center text-[9px] text-[#ffd700]">ENC 5</span>
-                        <button onclick="fire('enc_5_p')" class="hw-btn py-2 text-lg">+</button>
-                        <button onclick="fire('enc_5_m')" class="hw-btn py-2 text-lg">-</button></div>
-                </div>
+            <div id="stat-reso" class="status-panel" style="border-left-color: var(--accent-reso);">
+                <div class="status-title">Resolume Status</div>
+                <div id="txt-reso" class="status-text">Awaiting data...</div>
             </div>
-
-            <!-- Programmer -->
-            <div class="grid grid-cols-5 gap-2 sortable-group" id="grid-ma2-prog">
-                <div><button onclick="fire('ma2_prev')" class="hw-btn w-full py-3 text-[9px] btn-ma2">Prev Fix</button></div>
-                <div><button onclick="fire('ma2_next')" class="hw-btn w-full py-3 text-[9px] btn-ma2">Next Fix</button></div>
-                <div><button onclick="fire('ma2_hl')" class="hw-btn w-full py-3 text-[9px]">Highlt</button></div>
-                <div><button onclick="fire('ma2_thru')" class="hw-btn w-full py-3 text-[9px]">Thru</button></div>
-                <div><button onclick="fire('ma2_full')" class="hw-btn w-full py-3 text-[9px]">Full</button></div>
-            </div>
-
-            <!-- Exec Faders -->
-            <div class="bg-[#111] p-3 rounded border border-[#222] overflow-x-auto hide-scroll">
-                <div class="text-[10px] text-[#ffd700] font-bold mb-2">EXECUTORS</div>
-                <div class="flex space-x-3 sortable-group w-max" id="grid-ma2-exec">
-                    <!-- Faders 1-6 -->
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 1</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_1', this.value)">
-                        <button onclick="fire('ma2_ex1')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 2</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_2', this.value)">
-                        <button onclick="fire('ma2_ex2')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 3</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_3', this.value)">
-                        <button onclick="fire('ma2_ex3')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 4</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_4', this.value)">
-                        <button onclick="fire('ma2_ex4')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 5</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_5', this.value)">
-                        <button onclick="fire('ma2_ex5')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                    <div class="flex flex-col items-center w-12">
-                        <span class="text-[10px] font-bold">EX 6</span>
-                        <input type="range" class="fader-vert fad-ma2" oninput="sendFader('fad_ma2_6', this.value)">
-                        <button onclick="fire('ma2_ex6')" class="hw-btn w-full py-2 btn-ma2 mt-2">GO</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= RESO TAB ================= -->
-        <div id="tab-reso" class="tab-pane hidden flex-col p-3 space-y-4">
             
-            <div class="bg-[#111] p-3 rounded border border-[#222]">
-                <div class="flex justify-between items-end mb-3">
-                    <div class="w-1/2 pr-2">
-                        <label class="text-[9px] text-[#ff00ff] font-bold block mb-1">LAYER</label>
-                        <select id="sel-reso-layer" class="w-full bg-black border border-[#333] rounded p-2 text-white">
-                            <option>Layer 1</option><option>Layer 2</option><option>Layer 3</option>
-                        </select>
-                    </div>
-                    <div class="w-1/2 pl-2">
-                        <label class="text-[9px] text-[#ff00ff] font-bold block mb-1">COLUMN</label>
-                        <select id="sel-reso-col" class="w-full bg-black border border-[#333] rounded p-2 text-white">
-                            <option>Col 1</option><option>Col 2</option><option>Col 3</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="fire('res_trigger')" class="hw-btn btn-reso w-full py-4 text-sm">TRIGGER SELECTED</button>
+            <div id="stat-wing" class="status-panel" style="border-left-color: var(--accent-wing);">
+                <div class="status-title">Wing Status</div>
+                <div id="txt-wing" class="status-text">Awaiting data...</div>
             </div>
-
-            <!-- Transitions & Dials -->
-            <div class="grid grid-cols-2 gap-3 sortable-group" id="grid-reso-ctrl">
-                <div class="bg-[#111] p-3 rounded border border-[#222] flex flex-col justify-center space-y-2">
-                    <span class="text-[10px] text-[#ff00ff] font-bold text-center">TRANSITION</span>
-                    <button onclick="fire('res_cut')" class="hw-btn w-full py-3 btn-sys">CUT</button>
-                    <button onclick="fire('res_auto')" class="hw-btn w-full py-3">AUTO</button>
-                </div>
-                <div class="bg-[#111] p-3 rounded border border-[#222] grid grid-cols-2 gap-2">
-                    <span class="col-span-2 text-[10px] text-[#ff00ff] font-bold text-center">DIALS</span>
-                    <button onclick="fire('res_d1_m')" class="hw-btn py-3">-</button>
-                    <button onclick="fire('res_d1_p')" class="hw-btn py-3">+</button>
-                    <button onclick="fire('res_d2_m')" class="hw-btn py-3">-</button>
-                    <button onclick="fire('res_d2_p')" class="hw-btn py-3">+</button>
-                </div>
-            </div>
-
-            <!-- Opacity Faders -->
-            <div class="bg-[#111] p-3 rounded border border-[#222] overflow-x-auto hide-scroll">
-                <div class="text-[10px] text-[#ff00ff] font-bold mb-2">LAYER OPACITY</div>
-                <div class="flex space-x-4 sortable-group w-max" id="grid-reso-fad">
-                    <div class="flex flex-col items-center w-10">
-                        <span class="text-[10px] font-bold">L1</span>
-                        <input type="range" class="fader-vert fad-reso" oninput="sendFader('fad_res_1', this.value)">
-                    </div>
-                    <div class="flex flex-col items-center w-10">
-                        <span class="text-[10px] font-bold">L2</span>
-                        <input type="range" class="fader-vert fad-reso" oninput="sendFader('fad_res_2', this.value)">
-                    </div>
-                    <div class="flex flex-col items-center w-10">
-                        <span class="text-[10px] font-bold">L3</span>
-                        <input type="range" class="fader-vert fad-reso" oninput="sendFader('fad_res_3', this.value)">
-                    </div>
-                    <div class="flex flex-col items-center w-10">
-                        <span class="text-[10px] font-bold">L4</span>
-                        <input type="range" class="fader-vert fad-reso" oninput="sendFader('fad_res_4', this.value)">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= WING TAB ================= -->
-        <div id="tab-wing" class="tab-pane hidden flex-col p-3 h-full">
-            <div class="bg-[#111] p-3 rounded border border-[#222] overflow-x-auto hide-scroll h-full">
-                <div class="text-[10px] text-[#00ffff] font-bold mb-2">MASTER DESK</div>
-                <div class="flex space-x-3 sortable-group w-max h-full" id="grid-wing-fad">
-                    
-                    <!-- Wing Channels 1-5 -->
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1">CH 1</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" oninput="sendFader('fad_wing_1', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m1')" class="hw-btn w-full py-2 text-[9px] text-[#ff8800] border-[#ff8800]">MUTE</button>
-                            <button onclick="fire('wing_dca1')" class="hw-btn w-full py-2 text-[9px] text-[#aa00ff] border-[#aa00ff]">DCA</button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1">CH 2</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" oninput="sendFader('fad_wing_2', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m2')" class="hw-btn w-full py-2 text-[9px] text-[#ff8800] border-[#ff8800]">MUTE</button>
-                            <button onclick="fire('wing_dca2')" class="hw-btn w-full py-2 text-[9px] text-[#aa00ff] border-[#aa00ff]">DCA</button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1">CH 3</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" oninput="sendFader('fad_wing_3', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m3')" class="hw-btn w-full py-2 text-[9px] text-[#ff8800] border-[#ff8800]">MUTE</button>
-                            <button onclick="fire('wing_dca3')" class="hw-btn w-full py-2 text-[9px] text-[#aa00ff] border-[#aa00ff]">DCA</button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1">CH 4</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" oninput="sendFader('fad_wing_4', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m4')" class="hw-btn w-full py-2 text-[9px] text-[#ff8800] border-[#ff8800]">MUTE</button>
-                            <button onclick="fire('wing_dca4')" class="hw-btn w-full py-2 text-[9px] text-[#aa00ff] border-[#aa00ff]">DCA</button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1">CH 5</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" oninput="sendFader('fad_wing_5', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m5')" class="hw-btn w-full py-2 text-[9px] text-[#ff8800] border-[#ff8800]">MUTE</button>
-                            <button onclick="fire('wing_dca5')" class="hw-btn w-full py-2 text-[9px] text-[#aa00ff] border-[#aa00ff]">DCA</button>
-                        </div>
-                    </div>
-
-                    <!-- Wing Master LR -->
-                    <div class="flex flex-col items-center w-14 h-[calc(100vh-220px)] justify-between ml-2 border-l border-[#333] pl-4">
-                        <span class="text-[10px] font-bold border-b border-[#333] w-full text-center pb-1 text-[#ff3333]">MAIN</span>
-                        <input type="range" class="fader-vert fad-wing flex-1 !h-auto min-h-[150px]" style="border-color: #ff3333;" oninput="sendFader('fad_wing_m', this.value)">
-                        <div class="w-full space-y-1 mt-2">
-                            <button onclick="fire('wing_m_m')" class="hw-btn w-full py-2 text-[9px] text-[#ff3333] border-[#ff3333]">MUTE</button>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= MPLAY TAB ================= -->
-        <div id="tab-mp3" class="tab-pane hidden flex-col p-4 space-y-6 min-h-full">
             
-            <div class="bg-[#111] border border-[#222] rounded-lg p-4 flex-1 flex flex-col shadow-inner">
-                <div class="text-[12px] text-[#00ff00] font-bold mb-2 uppercase tracking-widest text-center">ACTIVE CUE SEQUENCE</div>
-                <div id="disp-stat_mp3_full" class="flex-1 bg-black border border-[#222] rounded p-4 font-mono text-2xl text-[#00ff00] flex items-center justify-center text-center shadow-[inset_0_0_20px_rgba(0,255,0,0.1)] leading-relaxed">
-                    Awaiting Timeline...
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 sortable-group">
-                <div><button onclick="fire('mp_prev')" class="hw-btn w-full py-6 text-sm text-gray-400">PREV CUE</button></div>
-                <div><button onclick="fire('mp_next')" class="hw-btn w-full py-6 text-sm text-gray-400">NEXT CUE</button></div>
-                <div><button onclick="fire('mp_stop')" class="hw-btn btn-sys w-full py-6 text-lg font-black">STOP ALL</button></div>
-                <div><button onclick="fire('mp_go')" class="hw-btn btn-mp3 w-full py-6 text-3xl font-black">GO</button></div>
+            <div id="stat-mplay" class="status-panel" style="border-left-color: var(--accent-mplay);">
+                <div class="status-title">MultiPlay Active Cue</div>
+                <div id="txt-mplay" class="status-text">Awaiting data...</div>
             </div>
         </div>
 
-        <!-- ================= SETUP TAB ================= -->
-        <div id="tab-setup" class="tab-pane hidden flex-col p-4 pb-20">
-            <div class="bg-[#111] border border-[#222] rounded p-4 space-y-4">
-                
-                <div>
-                    <label class="block text-[10px] text-gray-400 mb-1 font-bold">COMPANION IP/URL & PORT</label>
-                    <input type="text" id="cfg-server" value="http://127.0.0.1:8000" class="w-full bg-black border border-[#333] rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none">
+        <!-- ==================== MA2 TAB ==================== -->
+        <div id="tab-ma2" class="tab-content">
+            <div id="ma2-macros-container">
+                <div class="section-title">Macros</div>
+                <div class="grid-3">
+                    <button class="hw-btn ma2-btn" onclick="fire('2/4/1')">MACRO 1</button>
+                    <button class="hw-btn ma2-btn" onclick="fire('2/4/2')">MACRO 2</button>
+                    <button class="hw-btn ma2-btn" onclick="fire('2/4/3')">MACRO 3</button>
                 </div>
+            </div>
 
-                <div class="border-t border-[#333] pt-4">
-                    <h3 class="text-[12px] font-bold text-blue-400 mb-3">ROUTING MAPPINGS</h3>
-                    <p class="text-[10px] text-gray-500 mb-4">Define Button (Page/Row/Col) and Variable Names. Format: `1/0/1` for buttons, `var_name` for faders/status.</p>
-                    
-                    <div id="setup-fields" class="grid grid-cols-2 gap-3">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
+            <div class="section-title">Encoders 1 - 5</div>
+            <div class="grid-5">
+                <div style="display:flex; flex-direction:column; gap:4px;"><button class="hw-btn ma2-btn" style="padding:10px 0;" onclick="fire('2/1/1')">+</button><span style="font-size:9px; text-align:center; color:var(--text-muted); font-weight:bold;">ENC 1</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/2')">-</button></div>
+                <div style="display:flex; flex-direction:column; gap:4px;"><button class="hw-btn ma2-btn" style="padding:10px 0;" onclick="fire('2/1/3')">+</button><span style="font-size:9px; text-align:center; color:var(--text-muted); font-weight:bold;">ENC 2</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/4')">-</button></div>
+                <div style="display:flex; flex-direction:column; gap:4px;"><button class="hw-btn ma2-btn" style="padding:10px 0;" onclick="fire('2/1/5')">+</button><span style="font-size:9px; text-align:center; color:var(--text-muted); font-weight:bold;">ENC 3</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/6')">-</button></div>
+                <div style="display:flex; flex-direction:column; gap:4px;"><button class="hw-btn ma2-btn" style="padding:10px 0;" onclick="fire('2/1/7')">+</button><span style="font-size:9px; text-align:center; color:var(--text-muted); font-weight:bold;">ENC 4</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/8')">-</button></div>
+                <div style="display:flex; flex-direction:column; gap:4px;"><button class="hw-btn ma2-btn" style="padding:10px 0;" onclick="fire('2/1/9')">+</button><span style="font-size:9px; text-align:center; color:var(--text-muted); font-weight:bold;">ENC 5</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/10')">-</button></div>
+            </div>
 
-                <button onclick="saveConfig()" class="hw-btn w-full py-4 text-sm bg-blue-700 text-white border-blue-500 mt-4">SAVE CONFIGURATION</button>
+            <div class="section-title">Programmer</div>
+            <div class="grid-5">
+                <button class="hw-btn" style="font-size:10px;" onclick="fire('2/2/1')">PREV</button>
+                <button class="hw-btn" style="font-size:10px;" onclick="fire('2/2/2')">NEXT</button>
+                <button class="hw-btn" style="font-size:10px;" onclick="fire('2/2/3')">HIGH</button>
+                <button class="hw-btn" style="font-size:10px;" onclick="fire('2/2/4')">THRU</button>
+                <button class="hw-btn" style="font-size:10px;" onclick="fire('2/2/5')">FULL</button>
+            </div>
+
+            <div class="section-title">Executor Faders</div>
+            <div class="grid-6">
+                <div class="fader-container"><span class="fader-label">EX1</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_1', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/1')">GO</button></div>
+                <div class="fader-container"><span class="fader-label">EX2</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_2', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/2')">GO</button></div>
+                <div class="fader-container"><span class="fader-label">EX3</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_3', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/3')">GO</button></div>
+                <div class="fader-container"><span class="fader-label">EX4</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_4', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/4')">GO</button></div>
+                <div class="fader-container"><span class="fader-label">EX5</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_5', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/5')">GO</button></div>
+                <div class="fader-container"><span class="fader-label">EX6</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="0" class="fader-ma2" oninput="faderChange('fad_ma2_6', this.value)"></div><button class="hw-btn ma2-btn" style="width:100%; padding:8px 0; font-size:10px; margin-top:6px;" onclick="fire('2/3/6')">GO</button></div>
             </div>
         </div>
 
-    </main>
+        <!-- ==================== RESOLUME TAB ==================== -->
+        <div id="tab-reso" class="tab-content">
+            <div class="section-title">Transport</div>
+            <div class="grid-3">
+                <button class="hw-btn reso-btn" onclick="fire('3/1/1')">TRIG SEL</button>
+                <button class="hw-btn reso-btn" onclick="fire('3/1/2')">CUT</button>
+                <button class="hw-btn reso-btn" onclick="fire('3/1/3')">AUTO</button>
+            </div>
 
-    <!-- BOTTOM NAV -->
-    <nav class="h-16 bg-[#111] border-t border-[#222] flex justify-around items-center px-1 shrink-0 z-50">
-        <button onclick="switchTab('main')" id="nav-main" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-white bg-white/10 rounded">MAIN</button>
-        <button onclick="switchTab('ma2')" id="nav-ma2" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-gray-500 rounded">MA2</button>
-        <button onclick="switchTab('reso')" id="nav-reso" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-gray-500 rounded">RESO</button>
-        <button onclick="switchTab('wing')" id="nav-wing" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-gray-500 rounded">WING</button>
-        <button onclick="switchTab('mp3')" id="nav-mp3" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-gray-500 rounded">MPLAY</button>
-        <button onclick="switchTab('setup')" id="nav-setup" class="nav-btn flex-1 flex flex-col items-center py-2 text-[10px] font-bold uppercase text-gray-500 rounded">SETUP</button>
-    </nav>
+            <div class="section-title">Decks</div>
+            <div class="grid-4">
+                <button class="hw-btn" onclick="fire('3/2/1')">DECK 1</button>
+                <button class="hw-btn" onclick="fire('3/2/2')">DECK 2</button>
+                <button class="hw-btn" onclick="fire('3/2/3')">DECK 3</button>
+                <button class="hw-btn" onclick="fire('3/2/4')">DECK 4</button>
+            </div>
 
+            <div class="section-title">Layer Opacity & Master</div>
+            <div class="grid-4">
+                <div class="fader-container"><span class="fader-label">L1</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="100" class="fader-reso" oninput="faderChange('fad_reso_1', this.value)"></div></div>
+                <div class="fader-container"><span class="fader-label">L2</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="100" class="fader-reso" oninput="faderChange('fad_reso_2', this.value)"></div></div>
+                <div class="fader-container"><span class="fader-label">L3</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="100" class="fader-reso" oninput="faderChange('fad_reso_3', this.value)"></div></div>
+                <div class="fader-container"><span class="fader-label" style="color:#ff3333;">MST</span><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="100" class="fader-master" oninput="faderChange('fad_reso_m', this.value)"></div></div>
+            </div>
+        </div>
+
+        <!-- ==================== WING TAB ==================== -->
+        <div id="tab-wing" class="tab-content">
+            <div class="section-title">Mixer Channels & Master LR</div>
+            <div class="flex-row" id="wing-faders-wrapper">
+                <!-- CH 1-8 -->
+                <div class="fader-container wing-ch-1"><span class="fader-label">CH1</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/1')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_1', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/1')">DCA</button></div>
+                <div class="fader-container wing-ch-2"><span class="fader-label">CH2</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/2')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_2', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/2')">DCA</button></div>
+                <div class="fader-container wing-ch-3"><span class="fader-label">CH3</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/3')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_3', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/3')">DCA</button></div>
+                <div class="fader-container wing-ch-4"><span class="fader-label">CH4</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/4')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_4', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/4')">DCA</button></div>
+                <div class="fader-container wing-ch-5"><span class="fader-label">CH5</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/5')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_5', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/5')">DCA</button></div>
+                <div class="fader-container wing-ch-6" style="display:none;"><span class="fader-label">CH6</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/6')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_6', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/6')">DCA</button></div>
+                <div class="fader-container wing-ch-7" style="display:none;"><span class="fader-label">CH7</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/7')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_7', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/7')">DCA</button></div>
+                <div class="fader-container wing-ch-8" style="display:none;"><span class="fader-label">CH8</span><button class="hw-btn wing-btn" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/8')">MUTE</button><div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-wing" oninput="faderChange('fad_wing_8', this.value)"></div><button class="hw-btn" style="width:100%; padding:6px 0; font-size:9px; margin-top:6px;" onclick="fire('4/2/8')">DCA</button></div>
+
+                <div id="wing-master-divider" style="width:1px; background:var(--border-color); margin:0 4px;"></div>
+
+                <!-- WING MASTER -->
+                <div id="wing-master-container" class="fader-container" style="min-width:70px;">
+                    <span class="fader-label" style="color:var(--accent-wing);">MAIN LR</span>
+                    <button class="hw-btn btn-stop" style="width:100%; padding:6px 0; font-size:10px; margin-bottom:6px;" onclick="fire('4/1/10')">MUTE</button>
+                    <div class="fader-track-wrapper"><input type="range" min="0" max="100" value="75" class="fader-master" oninput="faderChange('fad_wing_m', this.value)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== MULTIPLAY TAB ==================== -->
+        <div id="tab-mplay" class="tab-content">
+            <div class="section-title">Timeline Navigation</div>
+            <div class="grid-2">
+                <button class="hw-btn mplay-btn" style="padding:18px 0; font-size:14px;" onclick="fire('5/1/1')">PREV CUE</button>
+                <button class="hw-btn mplay-btn" style="padding:18px 0; font-size:14px;" onclick="fire('5/1/2')">NEXT CUE</button>
+            </div>
+            
+            <div class="grid-2" style="margin-top:4px;">
+                <button class="hw-btn btn-stop" style="padding:14px 0;" onclick="fire('5/1/3')">PAUSE</button>
+                <button class="hw-btn" style="padding:14px 0; border-bottom:2px solid var(--accent-mplay);" onclick="fire('5/1/4')">FADE</button>
+            </div>
+
+            <div class="grid-2" style="margin-top:12px;">
+                <button class="hw-btn btn-stop" style="padding:22px 0; font-size:16px; font-weight:900;" onclick="fire('5/1/5')">STOP ALL</button>
+                <button class="hw-btn btn-go" style="padding:22px 0; font-size:18px; font-weight:900;" onclick="fire('5/1/6')">GO</button>
+            </div>
+        </div>
+
+        <!-- ==================== SETUP TAB ==================== -->
+        <div id="tab-setup" class="tab-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div class="section-title" style="margin:0;">Connection & Parameters</div>
+                <button class="hw-btn" style="background:#2481cc; padding:6px 14px; font-size:11px;" onclick="saveSettings()">SAVE</button>
+            </div>
+
+            <label class="setup-label">Companion HTTP URL</label>
+            <input type="text" id="cfg-url" class="setup-input" placeholder="https://your-domain:8000">
+
+            <label class="setup-label">Polling Rate (ms)</label>
+            <input type="number" id="cfg-poll" class="setup-input" placeholder="1500" value="1500">
+
+            <div class="section-title">Layout Toggles</div>
+            <div class="toggle-row">
+                <span style="font-size:12px; font-weight:bold; color:#ddd;">Show MA2 Macros</span>
+                <label class="switch"><input type="checkbox" id="cfg-ui-macros" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span style="font-size:12px; font-weight:bold; color:#ddd;">Show Wing Master Fader</span>
+                <label class="switch"><input type="checkbox" id="cfg-ui-wingmst" checked><span class="slider"></span></label>
+            </div>
+
+            <div style="margin-top:8px;">
+                <label class="setup-label">Wing Channel Count (1-8): <span id="wingch-val" style="color:var(--accent-wing);">5</span></label>
+                <input type="range" min="1" max="8" value="5" style="width:100%; transform:none; position:relative; margin:8px 0; height:20px;" id="cfg-ui-wingch" oninput="document.getElementById('wingch-val').innerText = this.value">
+            </div>
+
+            <div class="section-title">Status Monitor Button Mapping (Page/Row/Col)</div>
+            <label class="setup-label">MA2 Status Button</label>
+            <input type="text" id="cfg-stat-ma2" class="setup-input" value="99/1/1">
+            <label class="setup-label">Resolume Status Button</label>
+            <input type="text" id="cfg-stat-reso" class="setup-input" value="99/1/2">
+            <label class="setup-label">Wing Status Button</label>
+            <input type="text" id="cfg-stat-wing" class="setup-input" value="99/1/3">
+            <label class="setup-label">MultiPlay Status Button</label>
+            <input type="text" id="cfg-stat-mplay" class="setup-input" value="99/1/4">
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('main', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            MAIN
+        </button>
+        <button class="nav-btn nav-ma2" onclick="switchTab('ma2', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+            MA2
+        </button>
+        <button class="nav-btn nav-reso" onclick="switchTab('reso', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
+            RESO
+        </button>
+        <button class="nav-btn nav-wing" onclick="switchTab('wing', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6m12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+            WING
+        </button>
+        <button class="nav-btn nav-mplay" onclick="switchTab('mplay', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            MPLAY
+        </button>
+        <button class="nav-btn" onclick="switchTab('setup', this)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            SETUP
+        </button>
+    </div>
+
+    <!-- Application Script Logic -->
     <script>
-        // --- Data Configuration ---
-        // Defaults format: key: [Label, DefaultValue]
-        const DEF_CONFIG = {
-            // Status Vars
-            'stat_ma2': ['MA2 Status Var', 'ma2_status'],
-            'stat_reso': ['Reso Status Var', 'reso_status'],
-            'stat_wing': ['Wing Status Var', 'wing_status'],
-            'stat_mp3': ['MPlay Status Var', 'mp3_status'],
-            
-            // Buttons Main
-            'btn_wol': ['WOL Button', '99/1/1'],
-            'btn_bo_ma2': ['BO MA2', '99/2/1'],
-            'btn_bo_reso': ['BO RESO', '99/2/2'],
-            'btn_bo_wing': ['BO WING', '99/2/3'],
-            'btn_bo_all': ['BO ALL', '99/2/4'],
-            
-            // Buttons MA2
-            'enc_1_p': ['Enc 1 +', '2/1/1'], 'enc_1_m': ['Enc 1 -', '2/1/2'],
-            'enc_2_p': ['Enc 2 +', '2/1/3'], 'enc_2_m': ['Enc 2 -', '2/1/4'],
-            'enc_3_p': ['Enc 3 +', '2/1/5'], 'enc_3_m': ['Enc 3 -', '2/1/6'],
-            'enc_4_p': ['Enc 4 +', '2/1/7'], 'enc_4_m': ['Enc 4 -', '2/1/8'],
-            'enc_5_p': ['Enc 5 +', '2/1/9'], 'enc_5_m': ['Enc 5 -', '2/1/10'],
-            'ma2_prev': ['MA2 Prev', '2/2/1'], 'ma2_next': ['MA2 Next', '2/2/2'],
-            'ma2_hl': ['MA2 Highlt', '2/2/3'], 'ma2_thru': ['MA2 Thru', '2/2/4'],
-            'ma2_full': ['MA2 Full', '2/2/5'],
-            'ma2_ex1': ['MA2 Ex 1 GO', '2/3/1'], 'fad_ma2_1': ['MA2 Ex 1 Fader', 'fad_ma2_1'],
-            'ma2_ex2': ['MA2 Ex 2 GO', '2/3/2'], 'fad_ma2_2': ['MA2 Ex 2 Fader', 'fad_ma2_2'],
-            'ma2_ex3': ['MA2 Ex 3 GO', '2/3/3'], 'fad_ma2_3': ['MA2 Ex 3 Fader', 'fad_ma2_3'],
-            'ma2_ex4': ['MA2 Ex 4 GO', '2/3/4'], 'fad_ma2_4': ['MA2 Ex 4 Fader', 'fad_ma2_4'],
-            'ma2_ex5': ['MA2 Ex 5 GO', '2/3/5'], 'fad_ma2_5': ['MA2 Ex 5 Fader', 'fad_ma2_5'],
-            'ma2_ex6': ['MA2 Ex 6 GO', '2/3/6'], 'fad_ma2_6': ['MA2 Ex 6 Fader', 'fad_ma2_6'],
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-            // Buttons Reso
-            'res_trigger': ['Reso Trigger', '3/1/1'],
-            'res_cut': ['Reso Cut', '3/1/2'], 'res_auto': ['Reso Auto', '3/1/3'],
-            'res_d1_m': ['Reso D1 -', '3/2/1'], 'res_d1_p': ['Reso D1 +', '3/2/2'],
-            'res_d2_m': ['Reso D2 -', '3/2/3'], 'res_d2_p': ['Reso D2 +', '3/2/4'],
-            'fad_res_1': ['Reso L1 Fader', 'fad_res_1'],
-            'fad_res_2': ['Reso L2 Fader', 'fad_res_2'],
-            'fad_res_3': ['Reso L3 Fader', 'fad_res_3'],
-            'fad_res_4': ['Reso L4 Fader', 'fad_res_4'],
-
-            // Buttons Wing
-            'fad_wing_1': ['Wing CH1 Fader', 'fad_wing_1'], 'wing_m1': ['Wing Mute 1', '4/1/1'], 'wing_dca1': ['Wing DCA 1', '4/2/1'],
-            'fad_wing_2': ['Wing CH2 Fader', 'fad_wing_2'], 'wing_m2': ['Wing Mute 2', '4/1/2'], 'wing_dca2': ['Wing DCA 2', '4/2/2'],
-            'fad_wing_3': ['Wing CH3 Fader', 'fad_wing_3'], 'wing_m3': ['Wing Mute 3', '4/1/3'], 'wing_dca3': ['Wing DCA 3', '4/2/3'],
-            'fad_wing_4': ['Wing CH4 Fader', 'fad_wing_4'], 'wing_m4': ['Wing Mute 4', '4/1/4'], 'wing_dca4': ['Wing DCA 4', '4/2/4'],
-            'fad_wing_5': ['Wing CH5 Fader', 'fad_wing_5'], 'wing_m5': ['Wing Mute 5', '4/1/5'], 'wing_dca5': ['Wing DCA 5', '4/2/5'],
-            'fad_wing_m': ['Wing Master Fader', 'fad_wing_m'], 'wing_m_m': ['Wing Master Mute', '4/1/6'],
-
-            // Buttons MPlay
-            'mp_prev': ['MP Prev', '5/1/1'],
-            'mp_next': ['MP Next', '5/1/2'],
-            'mp_stop': ['MP Stop', '5/1/3'],
-            'mp_go': ['MP GO', '5/1/4']
+        let cfg = {
+            url: '',
+            poll: 1500,
+            ui_macros: true,
+            ui_wingmst: true,
+            ui_wingch: 5,
+            stat_ma2: '99/1/1',
+            stat_reso: '99/1/2',
+            stat_wing: '99/1/3',
+            stat_mplay: '99/1/4'
         };
 
-        let appConfig = { server: 'http://127.0.0.1:8000', maps: {} };
-        let pollTimer = null;
-        let isEdit = false;
-        let sortables = [];
-
-        // --- Core Functions ---
-        
-        // Critical Fix: Tab Switching using Tailwind 'hidden' safely
-        function switchTab(tabId) {
-            if(isEdit) toggleEdit();
-
-            // Hide all tabs
-            document.querySelectorAll('.tab-pane').forEach(el => {
-                el.classList.add('hidden');
-                el.classList.remove('flex'); // Ensure flex is removed when hidden
-            });
-            // Reset all nav buttons
-            document.querySelectorAll('.nav-btn').forEach(el => {
-                el.classList.remove('text-white', 'bg-white/10');
-                el.classList.add('text-gray-500');
-            });
-
-            // Show selected tab
-            const targetTab = document.getElementById('tab-' + tabId);
-            if(targetTab) {
-                targetTab.classList.remove('hidden');
-                targetTab.classList.add('flex'); // Restore flex layout
+        function initApp() {
+            const saved = localStorage.getItem('proctrl_cfg_v2');
+            if (saved) {
+                try { cfg = { ...cfg, ...JSON.parse(saved) }; } catch(e){}
             }
             
-            // Highlight selected nav
-            const targetNav = document.getElementById('nav-' + tabId);
-            if(targetNav) {
-                targetNav.classList.add('text-white', 'bg-white/10');
-                targetNav.classList.remove('text-gray-500');
-            }
+            document.getElementById('cfg-url').value = cfg.url;
+            document.getElementById('cfg-poll').value = cfg.poll;
+            document.getElementById('cfg-ui-macros').checked = cfg.ui_macros;
+            document.getElementById('cfg-ui-wingmst').checked = cfg.ui_wingmst;
+            document.getElementById('cfg-ui-wingch').value = cfg.ui_wingch;
+            document.getElementById('wingch-val').innerText = cfg.ui_wingch;
+            document.getElementById('cfg-stat-ma2').value = cfg.stat_ma2;
+            document.getElementById('cfg-stat-reso').value = cfg.stat_reso;
+            document.getElementById('cfg-stat-wing').value = cfg.stat_wing;
+            document.getElementById('cfg-stat-mplay').value = cfg.stat_mplay;
+
+            applyLayout();
+            pollLoop();
         }
 
-        // --- Network & API ---
-        async function req(path, method = 'GET', body = null) {
-            const url = appConfig.server.replace(/\/$/, "") + path;
-            const opts = { method, headers: { 'Content-Type': 'application/json' } };
-            if (body) opts.body = JSON.stringify(body);
-            
-            try {
-                const res = await fetch(url, opts);
-                if (!res.ok) throw new Error(res.status);
-                const text = await res.text();
-                return text ? JSON.parse(text) : {};
-            } catch (e) {
-                throw e;
-            }
-        }
+        function applyLayout() {
+            const m = document.getElementById('ma2-macros-container');
+            if (m) m.style.display = cfg.ui_macros ? 'block' : 'none';
 
-        function getMap(key) { return appConfig.maps[key] || DEF_CONFIG[key][1]; }
+            const wm = document.getElementById('wing-master-container');
+            const wd = document.getElementById('wing-master-divider');
+            if (wm) wm.style.display = cfg.ui_wingmst ? 'flex' : 'none';
+            if (wd) wd.style.display = cfg.ui_wingmst ? 'block' : 'none';
 
-        function fire(key) {
-            if ('vibrate' in navigator) navigator.vibrate(20);
-            const loc = getMap(key).split('/');
-            if (loc.length === 3) {
-                req(`/api/location/${loc[0]}/${loc[1]}/${loc[2]}/press`, 'POST').catch(()=>{});
-            }
-        }
-
-        // Trailing Edge Throttle for Faders
-        function throttle(func, limit) {
-            let timeout;
-            let lastRan;
-            return function(...args) {
-                if (!lastRan) {
-                    func.apply(this, args);
-                    lastRan = Date.now();
-                } else {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => {
-                        if ((Date.now() - lastRan) >= limit) {
-                            func.apply(this, args);
-                            lastRan = Date.now();
-                        }
-                    }, limit - (Date.now() - lastRan));
+            for (let i = 1; i <= 8; i++) {
+                const els = document.getElementsByClassName(`wing-ch-${i}`);
+                for (let el of els) {
+                    el.style.display = (i <= cfg.ui_wingch) ? 'flex' : 'none';
                 }
             }
         }
 
-        const sendFader = throttle((key, val) => {
-            req(`/api/custom-variable/${getMap(key)}`, 'PUT', { value: val }).catch(()=>{});
-        }, 100);
+        function saveSettings() {
+            cfg.url = document.getElementById('cfg-url').value.trim();
+            cfg.poll = parseInt(document.getElementById('cfg-poll').value) || 1500;
+            cfg.ui_macros = document.getElementById('cfg-ui-macros').checked;
+            cfg.ui_wingmst = document.getElementById('cfg-ui-wingmst').checked;
+            cfg.ui_wingch = parseInt(document.getElementById('cfg-ui-wingch').value) || 5;
+            cfg.stat_ma2 = document.getElementById('cfg-stat-ma2').value.trim();
+            cfg.stat_reso = document.getElementById('cfg-stat-reso').value.trim();
+            cfg.stat_wing = document.getElementById('cfg-stat-wing').value.trim();
+            cfg.stat_mplay = document.getElementById('cfg-stat-mplay').value.trim();
 
-        // Polling Loop
-        async function poll() {
+            localStorage.setItem('proctrl_cfg_v2', JSON.stringify(cfg));
+            applyLayout();
+            tg.HapticFeedback.notificationOccurred('success');
+            switchTab('main', document.querySelector('.nav-btn'));
+        }
+
+        function switchTab(tabId, btnEl) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.add('active');
+            if (btnEl) btnEl.classList.add('active');
+            
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        async function fire(address) {
+            tg.HapticFeedback.impactOccurred('medium');
+            if (!cfg.url) return;
             try {
-                const vars = ['stat_ma2', 'stat_reso', 'stat_wing', 'stat_mp3'];
-                const p = vars.map(v => req(`/api/custom-variable/${getMap(v)}`));
-                const res = await Promise.all(p);
-                
-                res.forEach((r, i) => {
-                    const val = (r && r.value !== undefined) ? r.value : 'Offline';
-                    
-                    if (vars[i] === 'stat_mp3') {
-                        const mpFull = document.getElementById('disp-stat_mp3_full');
-                        if (mpFull) mpFull.innerText = val !== 'Offline' ? val : 'Awaiting Timeline...';
-                    }
-                    
-                    const disp = document.getElementById(`disp-${vars[i]}`);
-                    if (disp) disp.innerText = val;
-                });
-                
-                document.getElementById('sys-led').className = 'led led-on';
-            } catch (e) {
-                document.getElementById('sys-led').className = 'led led-off';
+                await fetch(`${cfg.url}/api/location/${address}/press`, { method: 'POST', mode: 'cors' });
+            } catch (err) {
+                setOnline(false);
             }
         }
 
-        // --- Setup & Init ---
-        function populateSetup() {
-            const cont = document.getElementById('setup-fields');
-            cont.innerHTML = '';
-            
-            Object.keys(DEF_CONFIG).forEach(key => {
-                const val = appConfig.maps[key] || DEF_CONFIG[key][1];
-                cont.innerHTML += `
-                    <div>
-                        <label class="block text-[9px] text-gray-500 mb-1 truncate">${DEF_CONFIG[key][0]}</label>
-                        <input type="text" id="cfg_${key}" value="${val}" class="w-full bg-[#222] border border-[#444] rounded px-2 py-1 text-xs text-white">
-                    </div>
-                `;
-            });
+        let faderTimers = {};
+        function faderChange(varName, val) {
+            if (!cfg.url || faderTimers[varName]) return;
+            sendVar(varName, val);
+            faderTimers[varName] = setTimeout(() => { faderTimers[varName] = null; }, 80);
         }
 
-        function saveConfig() {
-            appConfig.server = document.getElementById('cfg-server').value;
-            appConfig.maps = {};
-            Object.keys(DEF_CONFIG).forEach(key => {
-                appConfig.maps[key] = document.getElementById(`cfg_${key}`).value;
-            });
-            localStorage.setItem('proctrl_cfg', JSON.stringify(appConfig));
-            
-            clearInterval(pollTimer);
-            poll();
-            pollTimer = setInterval(poll, 1000);
-            
-            alert('Settings Saved');
+        async function sendVar(name, val) {
+            try {
+                await fetch(`${cfg.url}/api/custom-variable/${name}?value=${val}`, { method: 'PUT', mode: 'cors' });
+            } catch (e) {}
         }
 
-        // --- Sortable Layout ---
-        function toggleEdit() {
-            isEdit = !isEdit;
-            document.body.classList.toggle('edit-mode', isEdit);
-            const btn = document.getElementById('edit-btn');
-            
-            if (isEdit) {
-                btn.innerText = 'SAVE LAYOUT';
-                btn.className = 'px-3 py-1.5 rounded bg-blue-600 border border-blue-500 font-bold text-[10px] uppercase text-white';
-                document.querySelectorAll('.sortable-group').forEach(el => {
-                    sortables.push(new Sortable(el, { animation: 150, delay: 100, delayOnTouchOnly: true }));
-                });
+        async function pollLoop() {
+            if (!cfg.url) {
+                setOnline(false);
+                setTimeout(pollLoop, cfg.poll);
+                return;
+            }
+
+            try {
+                const [ma2, reso, wing, mplay] = await Promise.all([
+                    fetchLoc(cfg.stat_ma2),
+                    fetchLoc(cfg.stat_reso),
+                    fetchLoc(cfg.stat_wing),
+                    fetchLoc(cfg.stat_mplay)
+                ]);
+
+                setOnline(true);
+                updatePanel('stat-ma2', 'txt-ma2', ma2);
+                updatePanel('stat-reso', 'txt-reso', reso);
+                updatePanel('stat-wing', 'txt-wing', wing);
+                updatePanel('stat-mplay', 'txt-mplay', mplay);
+            } catch (err) {
+                setOnline(false);
+            }
+
+            setTimeout(pollLoop, cfg.poll);
+        }
+
+        async function fetchLoc(addr) {
+            if (!addr) return null;
+            const res = await fetch(`${cfg.url}/api/location/${addr}`, { mode: 'cors' });
+            if (!res.ok) return null;
+            return await res.json();
+        }
+
+        function updatePanel(panelId, txtId, data) {
+            const panel = document.getElementById(panelId);
+            const txt = document.getElementById(txtId);
+            if (!panel || !txt) return;
+
+            if (data && data.text) {
+                txt.innerText = data.text.replace(/\\n/g, '\n');
+                if (data.bgcolor !== undefined && data.bgcolor !== 0) {
+                    const hex = '#' + parseInt(data.bgcolor).toString(16).padStart(6, '0');
+                    panel.style.backgroundColor = hex + '33';
+                    panel.style.borderColor = hex;
+                } else {
+                    panel.style.backgroundColor = 'var(--bg-panel)';
+                    panel.style.borderColor = 'var(--border-color)';
+                }
             } else {
-                btn.innerText = 'EDIT LAYOUT';
-                btn.className = 'px-3 py-1.5 rounded bg-[#222] border border-[#333] font-bold text-[10px] uppercase';
-                sortables.forEach(s => s.destroy());
-                sortables = [];
+                txt.innerText = 'No Data';
+                panel.style.backgroundColor = 'var(--bg-panel)';
             }
         }
 
-        // Boot
-        window.onload = () => {
-            const saved = localStorage.getItem('proctrl_cfg');
-            if (saved) appConfig = JSON.parse(saved);
-            document.getElementById('cfg-server').value = appConfig.server || 'http://127.0.0.1:8000';
-            
-            populateSetup();
-            poll();
-            pollTimer = setInterval(poll, 1000);
-        };
+        function setOnline(isOnline) {
+            const dot = document.getElementById('conn-dot');
+            const txt = document.getElementById('conn-text');
+            if (isOnline) {
+                dot.className = 'status-dot online';
+                txt.innerText = 'Online';
+            } else {
+                dot.className = 'status-dot offline';
+                txt.innerText = 'Offline';
+            }
+        }
+
+        initApp();
     </script>
 </body>
 </html>
