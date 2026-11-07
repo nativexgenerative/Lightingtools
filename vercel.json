@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/companion/:path*",
-      "destination": "https://1floor.magnitofon.crazedns.ru/:path*"
+      "destination": "http://1floor.magnitofon.crazedns.ru/:path*"
     }
   ]
 }
