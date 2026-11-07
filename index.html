@@ -273,7 +273,7 @@
             </div>
         </div>
 
-        <!-- SETUP TAB -->
+<!-- SETUP TAB -->
         <div id="tab-setup" class="tab-content hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                 <h2 style="font-size: 16px; font-weight: bold; margin:0;">Settings & Routing</h2>
@@ -296,4 +296,252 @@
                 <label class="switch"><input type="checkbox" id="cfg-ui-wingmst"><span class="slider"></span></label>
             </div>
             <div style="margin-top:14px;">
-                <label class="setup-l
+                <label class="setup-label">Wing Channels (1-8): <span id="wingch-val" style="color:var(--accent-wing);">5</span></label>
+                <input type="range" id="cfg-ui-wingch" min="1" max="8" value="5" style="width:100%; transform:none; position:relative; left:0; top:0; margin: 10px 0;" oninput="document.getElementById('wingch-val').innerText=this.value">
+            </div>
+
+            <div class="section-header">Status Buttons (Page/Row/Col)</div>
+            <label class="setup-label">MA2 Monitor Button</label>
+            <input type="text" id="cfg-stat-ma2" class="setup-input" value="99/1/1">
+            <label class="setup-label">Resolume Monitor Button</label>
+            <input type="text" id="cfg-stat-reso" class="setup-input" value="99/1/2">
+            <label class="setup-label">Wing Monitor Button</label>
+            <input type="text" id="cfg-stat-wing" class="setup-input" value="99/1/3">
+            <label class="setup-label">MultiPlay Monitor Button</label>
+            <input type="text" id="cfg-stat-mplay" class="setup-input" value="99/1/4">
+
+            <div class="section-header">Fader Variables (Direct Feedback)</div>
+            <label class="setup-label">Wing Fader Prefix (Appends 1-8)</label>
+            <input type="text" id="cfg-var-wing" class="setup-input" value="fad_wing_">
+            <label class="setup-label">Wing Master Variable</label>
+            <input type="text" id="cfg-var-wingm" class="setup-input" value="fad_wing_m">
+            <label class="setup-label">MA2 Fader Prefix (Appends 1-6)</label>
+            <input type="text" id="cfg-var-ma2" class="setup-input" value="fad_ma2_">
+            <label class="setup-label">Resolume Fader Prefix (Appends 1-3, m)</label>
+            <input type="text" id="cfg-var-reso" class="setup-input" value="fad_reso_">
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('main', this)">MAIN</button>
+        <button class="nav-btn" onclick="switchTab('ma2', this)">MA2</button>
+        <button class="nav-btn" onclick="switchTab('reso', this)">RESO</button>
+        <button class="nav-btn" onclick="switchTab('wing', this)">WING</button>
+        <button class="nav-btn" onclick="switchTab('mplay', this)">MPLAY</button>
+        <button class="nav-btn" onclick="switchTab('setup', this)">SETUP</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let cfg = {
+            url: '/api/companion',
+            poll: 1200,
+            stat_ma2: '99/1/1', stat_reso: '99/1/2', stat_wing: '99/1/3', stat_mplay: '99/1/4',
+            var_wing_pref: 'fad_wing_', var_wing_mst: 'fad_wing_m',
+            var_ma2_pref: 'fad_ma2_', var_reso_pref: 'fad_reso_',
+            ui_macros: true, ui_wingmst: true, ui_wingch: 5
+        };
+
+        let activeTab = 'main';
+        let isDragging = {};
+        let throttleTimers = {};
+
+        function init() {
+            const saved = localStorage.getItem('proctrl_cfg');
+            if (saved) cfg = { ...cfg, ...JSON.parse(saved) };
+            
+            document.getElementById('cfg-url').value = cfg.url;
+            document.getElementById('cfg-poll').value = cfg.poll;
+            document.getElementById('cfg-stat-ma2').value = cfg.stat_ma2;
+            document.getElementById('cfg-stat-reso').value = cfg.stat_reso;
+            document.getElementById('cfg-stat-wing').value = cfg.stat_wing;
+            document.getElementById('cfg-stat-mplay').value = cfg.stat_mplay;
+            
+            document.getElementById('cfg-var-wing').value = cfg.var_wing_pref;
+            document.getElementById('cfg-var-wingm').value = cfg.var_wing_mst;
+            document.getElementById('cfg-var-ma2').value = cfg.var_ma2_pref;
+            document.getElementById('cfg-var-reso').value = cfg.var_reso_pref;
+
+            document.getElementById('cfg-ui-macros').checked = cfg.ui_macros;
+            document.getElementById('cfg-ui-wingmst').checked = cfg.ui_wingmst;
+            document.getElementById('cfg-ui-wingch').value = cfg.ui_wingch;
+            document.getElementById('wingch-val').innerText = cfg.ui_wingch;
+
+            applyLayout();
+            pollStatusLoop();
+        }
+
+        function applyLayout() {
+            document.getElementById('ma2-macros-container').style.display = cfg.ui_macros ? 'block' : 'none';
+            document.getElementById('wing-master-divider').style.display = cfg.ui_wingmst ? 'block' : 'none';
+            document.getElementById('wing-master-container').style.display = cfg.ui_wingmst ? 'flex' : 'none';
+            
+            for(let i=1; i<=8; i++) {
+                const els = document.getElementsByClassName(`wing-ch-${i}`);
+                for(let el of els) el.style.display = (i <= cfg.ui_wingch) ? 'flex' : 'none';
+            }
+        }
+
+        function saveSettings() {
+            cfg.url = document.getElementById('cfg-url').value.replace(/\/$/, '');
+            cfg.poll = parseInt(document.getElementById('cfg-poll').value) || 1200;
+            cfg.stat_ma2 = document.getElementById('cfg-stat-ma2').value;
+            cfg.stat_reso = document.getElementById('cfg-stat-reso').value;
+            cfg.stat_wing = document.getElementById('cfg-stat-wing').value;
+            cfg.stat_mplay = document.getElementById('cfg-stat-mplay').value;
+            
+            cfg.var_wing_pref = document.getElementById('cfg-var-wing').value;
+            cfg.var_wing_mst = document.getElementById('cfg-var-wingm').value;
+            cfg.var_ma2_pref = document.getElementById('cfg-var-ma2').value;
+            cfg.var_reso_pref = document.getElementById('cfg-var-reso').value;
+
+            cfg.ui_macros = document.getElementById('cfg-ui-macros').checked;
+            cfg.ui_wingmst = document.getElementById('cfg-ui-wingmst').checked;
+            cfg.ui_wingch = parseInt(document.getElementById('cfg-ui-wingch').value) || 5;
+
+            localStorage.setItem('proctrl_cfg', JSON.stringify(cfg));
+            applyLayout();
+            tg.HapticFeedback.notificationOccurred('success');
+            switchTab('main', document.querySelector('.nav-btn'));
+        }
+
+        function switchTab(tabId, btnEl) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) {
+                target.classList.remove('hidden');
+                if(tabId === 'mplay') target.style.display = 'flex';
+                else target.style.display = 'block';
+            }
+            btnEl.classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+            pollActiveTabFeedback(); // Instantly fetch faders for new tab
+        }
+
+        async function fire(address) {
+            tg.HapticFeedback.impactOccurred('medium');
+            if (!cfg.url) return;
+            try { await fetch(`${cfg.url}/api/location/${address}/press`, { method: 'POST' }); } catch (err) { setOnline(false); }
+        }
+
+        function onFaderInput(faderId, varPrefix, suffix, value) {
+            const varName = varPrefix + suffix;
+            if (!cfg.url || throttleTimers[varName]) return;
+            sendCustomVar(varName, value);
+            throttleTimers[varName] = setTimeout(() => { throttleTimers[varName] = null; }, 85);
+        }
+
+        async function sendCustomVar(name, val) {
+            try { await fetch(`${cfg.url}/api/custom-variable/${name}?value=${val}`, { method: 'PUT' }); } catch (e) {}
+        }
+
+        async function fetchCustomVar(name) {
+            if (!name) return null;
+            try {
+                const res = await fetch(`${cfg.url}/api/custom-variable/${name}`);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.value;
+            } catch (e) { return null; }
+        }
+
+        // Direct Feedback Polling (Only pulls faders for the tab you are looking at)
+        async function pollActiveTabFeedback() {
+            if (!cfg.url || activeTab === 'main' || activeTab === 'mplay' || activeTab === 'setup') return;
+            
+            let fadersToPoll = [];
+            if (activeTab === 'wing') {
+                for(let i=1; i<=cfg.ui_wingch; i++) fadersToPoll.push({ id: `slider_wing_${i}`, varName: `${cfg.var_wing_pref}${i}` });
+                if (cfg.ui_wingmst) fadersToPoll.push({ id: 'slider_wing_m', varName: cfg.var_wing_mst });
+            } else if (activeTab === 'ma2') {
+                for(let i=1; i<=6; i++) fadersToPoll.push({ id: `slider_ma2_${i}`, varName: `${cfg.var_ma2_pref}${i}` });
+            } else if (activeTab === 'reso') {
+                for(let i=1; i<=3; i++) fadersToPoll.push({ id: `slider_reso_${i}`, varName: `${cfg.var_reso_pref}${i}` });
+                fadersToPoll.push({ id: 'slider_reso_m', varName: `${cfg.var_reso_pref}m` });
+            }
+
+            if (fadersToPoll.length > 0) {
+                const results = await Promise.all(fadersToPoll.map(f => fetchCustomVar(f.varName)));
+                fadersToPoll.forEach((fader, idx) => {
+                    const val = results[idx];
+                    if (val !== null && !isDragging[fader.id]) {
+                        const el = document.getElementById(fader.id);
+                        if (el && el.value != val) el.value = val;
+                    }
+                });
+            }
+        }
+
+        async function pollStatusLoop() {
+            if (!cfg.url) { setTimeout(pollStatusLoop, cfg.poll); return; }
+
+            try {
+                const [ma2, reso, wing, mplay] = await Promise.all([
+                    fetchLocationData(cfg.stat_ma2), fetchLocationData(cfg.stat_reso),
+                    fetchLocationData(cfg.stat_wing), fetchLocationData(cfg.stat_mplay)
+                ]);
+
+                setOnline(true);
+                updatePanel('stat-ma2', 'txt-ma2', ma2);
+                updatePanel('stat-reso', 'txt-reso', reso);
+                updatePanel('stat-wing', 'txt-wing', wing);
+                updatePanel('stat-mplay', 'txt-mplay', mplay);
+                
+                await pollActiveTabFeedback();
+
+            } catch (err) { setOnline(false); }
+
+            setTimeout(pollStatusLoop, cfg.poll);
+        }
+
+        async function fetchLocationData(address) {
+            if (!address) return null;
+            const res = await fetch(`${cfg.url}/api/location/${address}`);
+            if (!res.ok) return null;
+            return await res.json();
+        }
+
+        function updatePanel(panelId, textId, data) {
+            const panel = document.getElementById(panelId);
+            const txt = document.getElementById(textId);
+            if (!panel || !txt) return;
+
+            if (data && data.text) {
+                const formattedText = data.text.replace(/\\n/g, '\n');
+                txt.innerText = formattedText;
+                
+                // Duplicate Multiplay text to the dedicated tab
+                if (textId === 'txt-mplay') {
+                    const mplayTabTxt = document.getElementById('txt-mplay-tab');
+                    if (mplayTabTxt) mplayTabTxt.innerText = formattedText;
+                }
+
+                if (data.bgcolor !== undefined && data.bgcolor !== 0) {
+                    const hexColor = '#' + parseInt(data.bgcolor).toString(16).padStart(6, '0');
+                    panel.style.backgroundColor = hexColor + '40';
+                    panel.style.borderColor = hexColor;
+                } else {
+                    panel.style.backgroundColor = 'var(--bg-panel)';
+                }
+            } else {
+                txt.innerText = 'No Data';
+            }
+        }
+
+        function setOnline(status) {
+            const dot = document.getElementById('conn-dot');
+            const txt = document.getElementById('conn-text');
+            if (status) { dot.className = 'status-dot online'; txt.innerText = 'Online'; } 
+            else { dot.className = 'status-dot offline'; txt.innerText = 'Offline'; }
+        }
+
+        init();
+    </script>
+</body>
+    </html>
