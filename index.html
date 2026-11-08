@@ -203,7 +203,6 @@
                 <div class="drag-handle">☰ DRAG TO REORDER</div>
                 <div class="widget-title">Executors</div>
                 <div style="display: flex; gap: 6px; overflow-x: auto;">
-                    <!-- Hardcoded Faders to prevent DOM overwriting -->
                     <div class="fader-container" style="min-width: 55px;">
                         <span class="fader-label">EX1</span>
                         <div class="fader-track-wrapper"><input type="range" id="slider_ma2_1" min="0" max="100" value="0" onmousedown="isDragging['slider_ma2_1']=true" onmouseup="isDragging['slider_ma2_1']=false" ontouchstart="isDragging['slider_ma2_1']=true" ontouchend="isDragging['slider_ma2_1']=false" oninput="onFaderInput('slider_ma2_1', cfg.var_ma2_pref, '1', this.value)"></div>
@@ -271,7 +270,6 @@
                 <div class="drag-handle">☰ DRAG TO REORDER</div>
                 <div class="widget-title">Layer Opacity</div>
                 <div style="display: flex; gap: 6px; overflow-x: auto;">
-                    <!-- Hardcoded Faders -->
                     <div class="fader-container" style="min-width: 60px;">
                         <span class="fader-label">L1</span>
                         <div class="fader-track-wrapper"><input type="range" id="slider_reso_1" min="0" max="100" value="100" onmousedown="isDragging['slider_reso_1']=true" onmouseup="isDragging['slider_reso_1']=false" ontouchstart="isDragging['slider_reso_1']=true" ontouchend="isDragging['slider_reso_1']=false" oninput="onFaderInput('slider_reso_1', cfg.var_reso_pref, '1', this.value)"></div>
@@ -321,7 +319,6 @@
                 <div class="drag-handle">☰ DRAG TO REORDER</div>
                 <div class="widget-title">Channels 1-4</div>
                 <div style="display: flex; gap: 6px; overflow-x: auto;">
-                    <!-- Hardcoded Wing 1-4 -->
                     <div class="fader-container" style="flex:1; min-width: 60px;">
                         <span class="fader-label">CH1</span>
                         <button class="hw-btn" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fireAction(event, 'wing_m1', '4/1/1')">M</button>
@@ -349,7 +346,6 @@
                 <div class="drag-handle">☰ DRAG TO REORDER</div>
                 <div class="widget-title">Channels 5-8</div>
                 <div style="display: flex; gap: 6px; overflow-x: auto;">
-                    <!-- Hardcoded Wing 5-8 -->
                     <div class="fader-container" style="flex:1; min-width: 60px;">
                         <span class="fader-label">CH5</span>
                         <button class="hw-btn" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fireAction(event, 'wing_m5', '4/1/5')">M</button>
@@ -720,15 +716,25 @@
             } catch (e) {}
         }
 
-        // --- Variable Polling Engine ---
+        // --- Variable Polling Engine (Updated to use /value endpoint) ---
         async function fetchVarValue(name) {
             if (!name) return null;
             try {
-                // Bypass Vercel Edge Cache
-                const res = await fetch(`${getBaseUrl()}/api/custom-variable/${name}?_t=${Date.now()}`);
+                // Target the exact path for the raw value string
+                const res = await fetch(`${getBaseUrl()}/api/custom-variable/${name}/value?_t=${Date.now()}`);
                 if (!res.ok) return null;
-                const data = await res.json();
-                return data.value;
+                
+                // Read whatever comes back as raw text first
+                const textData = await res.text();
+                
+                // If it happens to be JSON, unpack it. Otherwise, return the text directly.
+                try {
+                    const json = JSON.parse(textData);
+                    if (json && json.value !== undefined) return json.value;
+                    return textData;
+                } catch(e) {
+                    return textData; 
+                }
             } catch (e) { return null; }
         }
 
@@ -753,7 +759,8 @@
                 const results = await Promise.all(fadersToPoll.map(f => fetchVarValue(f.varName)));
                 fadersToPoll.forEach((fader, idx) => {
                     const val = results[idx];
-                    if (val !== null && !isDragging[fader.id]) {
+                    // Verify val is a valid number before updating the fader position
+                    if (val !== null && !isNaN(val) && !isDragging[fader.id]) {
                         const el = document.getElementById(fader.id);
                         if (el && el.value != val) el.value = val;
                     }
@@ -779,10 +786,10 @@
                 updatePanelText('txt-rboss', rboss);
                 
                 const mplayTabTxt = document.getElementById('txt-mplay-tab');
-                if (mplayTabTxt) mplayTabTxt.innerText = mplay ? mplay.replace(/\\n/g, '\n') : 'No Data';
+                if (mplayTabTxt) mplayTabTxt.innerText = mplay ? String(mplay).replace(/\\n/g, '\n') : 'No Data';
 
                 const rbossTabTxt = document.getElementById('txt-rboss-tab');
-                if (rbossTabTxt) rbossTabTxt.innerText = rboss ? rboss.replace(/\\n/g, '\n') : 'No Data';
+                if (rbossTabTxt) rbossTabTxt.innerText = rboss ? String(rboss).replace(/\\n/g, '\n') : 'No Data';
                 
                 await pollActiveTabFeedback();
             } catch (err) { setOnline(false); }
@@ -793,7 +800,7 @@
         function updatePanelText(textId, textData) {
             const txt = document.getElementById(textId);
             if (!txt) return;
-            if (textData !== null && textData !== undefined) {
+            if (textData !== null && textData !== undefined && textData !== '') {
                 txt.innerText = String(textData).replace(/\\n/g, '\n');
             } else {
                 txt.innerText = 'No Data';
