@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PROCTRL - Show Control</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- SortableJS for Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         :root {
-            --bg-main: #0a0a0c;
-            --bg-panel: #141417;
-            --bg-card: #1c1c21;
-            --text-main: #ffffff;
-            --text-muted: #808089;
-            --accent-ma2: #d4af37;
-            --accent-reso: #ff007f;
-            --accent-wing: #00e5ff;
-            --accent-mplay: #00ff40;
+            --bg-main: #0a0a0c; --bg-panel: #141417; --bg-card: #1c1c21;
+            --text-main: #ffffff; --text-muted: #808089;
+            --accent-ma2: #d4af37; --accent-reso: #ff007f; --accent-wing: #00e5ff; --accent-mplay: #00ff40;
             --border-color: rgba(255, 255, 255, 0.05);
         }
 
@@ -31,10 +27,7 @@
             padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 50;
         }
 
-        .status-dot {
-            height: 10px; width: 10px; border-radius: 50%; display: inline-block;
-            box-shadow: 0 0 8px currentColor;
-        }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
         .online { background-color: #00ff40; color: #00ff40; }
         .offline { background-color: #ff3333; color: #ff3333; }
 
@@ -47,9 +40,9 @@
         }
 
         .nav-btn {
-            background: none; border: none; color: var(--text-muted);
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            padding: 10px 6px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: none; border: none; color: var(--text-muted); font-size: 10px; font-weight: 700; 
+            text-transform: uppercase; padding: 10px 6px; border-radius: 8px; display: flex; flex-direction: column; 
+            align-items: center; gap: 4px; transition: color 0.2s;
         }
         .nav-btn.active { color: var(--text-main); background-color: rgba(255,255,255,0.08); }
 
@@ -63,14 +56,34 @@
         .btn-go { background: linear-gradient(180deg, #1a4025 0%, #0d2614 100%); border-color: #2e7343; color: #85ffaa; }
         .btn-stop { background: linear-gradient(180deg, #401a1a 0%, #260d0d 100%); border-color: #732e2e; color: #ff8585; }
 
-        .fader-container {
-            display: flex; flex-direction: column; align-items: center;
-            background: var(--bg-panel); padding: 12px 6px; border-radius: 8px;
-            border: 1px solid var(--border-color); height: 210px;
+        /* Widget & Layout System */
+        .tab-content { display: none; flex-direction: column; gap: 12px; }
+        .tab-content.active { display: flex; }
+        
+        .widget {
+            background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 12px; position: relative;
         }
+        .widget-title { font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        
+        /* Drag & Drop Styles */
+        .drag-handle {
+            display: none; position: absolute; top: 0; left: 0; right: 0; height: 28px;
+            background: rgba(255,255,255,0.1); cursor: grab; border-radius: 8px 8px 0 0;
+            text-align: center; color: #aaa; font-size: 10px; line-height: 28px; font-weight: bold; z-index: 10;
+        }
+        body.edit-mode .drag-handle { display: block; }
+        body.edit-mode .widget { padding-top: 36px; border-style: dashed; border-color: #555; }
+        body.edit-mode .hw-btn, body.edit-mode input[type=range] { pointer-events: none; opacity: 0.5; }
+        
+        #btn-edit-layout { background: #333; color: white; border: none; font-size: 10px; font-weight: bold; padding: 6px 10px; border-radius: 6px; }
+        body.edit-mode #btn-edit-layout { background: #2481cc; color: white; }
+
+        /* Faders */
+        .fader-container { display: flex; flex-direction: column; align-items: center; background: var(--bg-card); padding: 12px 6px; border-radius: 6px; height: 210px; border: 1px solid rgba(0,0,0,0.5); }
         .fader-label { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; }
         .fader-track-wrapper { position: relative; flex: 1; width: 100%; display: flex; justify-content: center; }
-
+        
         input[type=range] {
             -webkit-appearance: none; width: 140px; height: 36px; background: transparent;
             transform: rotate(-90deg); position: absolute; top: 50%; left: 50%; margin: -18px 0 0 -70px;
@@ -81,23 +94,18 @@
             border: 1px solid #111; -webkit-appearance: none; margin-top: -13px;
         }
 
+        /* Status Panels */
         .status-panel {
-            background: var(--bg-panel); border-radius: 8px; padding: 12px; margin-bottom: 12px;
-            border-left: 4px solid var(--text-muted); display: flex; flex-direction: column; min-height: 65px; transition: 0.2s;
+            background: var(--bg-card); border-radius: 8px; padding: 12px; margin-bottom: 8px;
+            border-left: 4px solid var(--text-muted); display: flex; flex-direction: column; min-height: 60px;
         }
-        .status-title { font-size: 9px; text-transform: uppercase; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
-        .status-text { font-family: monospace; font-size: 13px; font-weight: bold; color: #fff; }
+        .status-text { font-family: monospace; font-size: 14px; font-weight: bold; color: #fff; margin-top: 4px;}
 
-        .hidden { display: none !important; }
-        .setup-input {
-            width: 100%; background: #000; border: 1px solid var(--border-color);
-            color: #fff; padding: 12px; border-radius: 6px; margin-bottom: 14px; font-family: monospace;
-        }
+        /* Setup Form */
+        .setup-input { width: 100%; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; margin-bottom: 14px; font-family: monospace; box-sizing: border-box; }
         .setup-label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold; }
+        .section-header { font-size: 14px; font-weight: bold; margin: 24px 0 12px 0; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;}
         
-        .section-header { font-size: 15px; font-weight: bold; margin: 24px 0 12px 0; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;}
-        
-        /* Checkbox Toggles */
         .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
         .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -111,170 +119,274 @@
 
     <div class="header">
         <div style="font-weight: 900; font-size: 18px; letter-spacing: 1px;">PRO<span style="color: #2481cc;">CTRL</span></div>
-        <div style="display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-            <span id="conn-dot" class="status-dot offline"></span>
-            <span id="conn-text" style="font-size: 11px; font-weight: bold; color: #808089;">Offline</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="btn-edit-layout" onclick="toggleEditMode()">EDIT LAYOUT</button>
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                <span id="conn-dot" class="status-dot offline"></span>
+            </div>
         </div>
     </div>
 
     <div class="content-area">
         <!-- MAIN TAB -->
-        <div id="tab-main" class="tab-content">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                <button class="hw-btn btn-go" onclick="fire('99/1/1')">WAKE ON LAN</button>
-                <button class="hw-btn btn-stop" onclick="fire('99/2/4')">ALL BLACKOUT</button>
+        <div id="tab-main" class="tab-content tab-zone active">
+            
+            <div class="widget" id="wid-main-sys" data-name="System Controls">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="hw-btn btn-go" onclick="fire('99/1/1')">WAKE ON LAN</button>
+                    <button class="hw-btn btn-stop" onclick="fire('99/2/4')">ALL BLACKOUT</button>
+                </div>
             </div>
-            <div id="stat-ma2" class="status-panel" style="border-left-color: var(--accent-ma2);">
-                <div class="status-title">grandMA2 Status</div>
-                <div id="txt-ma2" class="status-text">Awaiting data...</div>
-            </div>
-            <div id="stat-reso" class="status-panel" style="border-left-color: var(--accent-reso);">
-                <div class="status-title">Resolume Status</div>
-                <div id="txt-reso" class="status-text">Awaiting data...</div>
-            </div>
-            <div id="stat-wing" class="status-panel" style="border-left-color: var(--accent-wing);">
-                <div class="status-title">Wing Status</div>
-                <div id="txt-wing" class="status-text">Awaiting data...</div>
-            </div>
-            <div id="stat-mplay" class="status-panel" style="border-left-color: var(--accent-mplay);">
-                <div class="status-title">MultiPlay Active Cue</div>
-                <div id="txt-mplay" class="status-text">Awaiting data...</div>
+            
+            <div class="widget" id="wid-main-status" data-name="Status Monitors">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Live Variables</div>
+                <div id="stat-ma2" class="status-panel" style="border-left-color: var(--accent-ma2);">
+                    <div class="widget-title" style="margin:0;">MA2</div><div id="txt-ma2" class="status-text">...</div>
+                </div>
+                <div id="stat-reso" class="status-panel" style="border-left-color: var(--accent-reso);">
+                    <div class="widget-title" style="margin:0;">Resolume</div><div id="txt-reso" class="status-text">...</div>
+                </div>
+                <div id="stat-wing" class="status-panel" style="border-left-color: var(--accent-wing);">
+                    <div class="widget-title" style="margin:0;">Wing</div><div id="txt-wing" class="status-text">...</div>
+                </div>
+                <div id="stat-mplay" class="status-panel" style="border-left-color: var(--accent-mplay);">
+                    <div class="widget-title" style="margin:0;">MultiPlay</div><div id="txt-mplay" class="status-text">...</div>
+                </div>
             </div>
         </div>
 
         <!-- MA2 TAB -->
-        <div id="tab-ma2" class="tab-content hidden">
-            <div id="ma2-macros-container" style="display: none;">
-                <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Macros</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px;">
+        <div id="tab-ma2" class="tab-content tab-zone">
+            <div class="widget" id="wid-ma2-macros" data-name="MA2 Macros">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Macros</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
                     <button class="hw-btn" onclick="fire('2/4/1')">M 1</button>
                     <button class="hw-btn" onclick="fire('2/4/2')">M 2</button>
                     <button class="hw-btn" onclick="fire('2/4/3')">M 3</button>
+                    <button class="hw-btn" onclick="fire('2/4/4')">M 4</button>
+                    <button class="hw-btn" onclick="fire('2/4/5')">M 5</button>
+                    <button class="hw-btn" onclick="fire('2/4/6')">M 6</button>
                 </div>
             </div>
 
-            <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Encoders</div>
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px;">
-                <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/1')">+</button><span style="font-size:8px; text-align:center; color:#888;">ENC 1</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/2')">-</button></div>
-                <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/3')">+</button><span style="font-size:8px; text-align:center; color:#888;">ENC 2</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/4')">-</button></div>
-                <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/5')">+</button><span style="font-size:8px; text-align:center; color:#888;">ENC 3</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/6')">-</button></div>
-                <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/7')">+</button><span style="font-size:8px; text-align:center; color:#888;">ENC 4</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/8')">-</button></div>
-                <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/9')">+</button><span style="font-size:8px; text-align:center; color:#888;">ENC 5</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/10')">-</button></div>
+            <div class="widget" id="wid-ma2-enc" data-name="MA2 Encoders">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Encoders</div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                    <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/1')">+</button><span style="font-size:8px; text-align:center; color:#888;">E1</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/2')">-</button></div>
+                    <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/3')">+</button><span style="font-size:8px; text-align:center; color:#888;">E2</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/4')">-</button></div>
+                    <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/5')">+</button><span style="font-size:8px; text-align:center; color:#888;">E3</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/6')">-</button></div>
+                    <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/7')">+</button><span style="font-size:8px; text-align:center; color:#888;">E4</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/8')">-</button></div>
+                    <div style="display:flex; flex-direction:column; gap:2px;"><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/9')">+</button><span style="font-size:8px; text-align:center; color:#888;">E5</span><button class="hw-btn" style="padding:10px 0;" onclick="fire('2/1/10')">-</button></div>
+                </div>
             </div>
 
-            <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Executors</div>
-            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;">
-                <!-- Faders generated via inline HTML to support Touch binding -->
-                <script>
-                    for(let i=1; i<=6; i++) {
-                        document.write(`
-                        <div class="fader-container">
-                            <span class="fader-label">EX${i}</span>
-                            <div class="fader-track-wrapper">
-                                <input type="range" id="slider_ma2_${i}" min="0" max="100" value="0"
-                                    onmousedown="isDragging['slider_ma2_${i}']=true" onmouseup="isDragging['slider_ma2_${i}']=false"
-                                    ontouchstart="isDragging['slider_ma2_${i}']=true" ontouchend="isDragging['slider_ma2_${i}']=false"
-                                    oninput="onFaderInput('slider_ma2_${i}', cfg.var_ma2_pref, '${i}', this.value)">
-                            </div>
-                            <button class="hw-btn w-full mt-2 py-2 text-xs" style="width:100%; font-size:10px; padding:6px 0;" onclick="fire('2/3/${i}')">GO</button>
-                        </div>`);
-                    }
-                </script>
+            <div class="widget" id="wid-ma2-prog" data-name="MA2 Programmer">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Programmer</div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/1')">PREV</button>
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/2')">NEXT</button>
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/3')">HIGH</button>
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/4')">THRU</button>
+                    <button class="hw-btn btn-go" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/5')">FULL</button>
+                    <button class="hw-btn btn-stop" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/6')">CLEAR</button>
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px; border-color:var(--accent-ma2);" onclick="fire('2/2/7')">STORE</button>
+                    <button class="hw-btn" style="font-size:10px; padding:12px 2px;" onclick="fire('2/2/8')">UPDT</button>
+                </div>
+            </div>
+
+            <div class="widget" id="wid-ma2-execs" data-name="MA2 Executors">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Executors</div>
+                <div style="display: flex; gap: 6px; overflow-x: auto;">
+                    <script>
+                        for(let i=1; i<=6; i++) {
+                            document.write(`
+                            <div class="fader-container" style="min-width: 55px;">
+                                <span class="fader-label">EX${i}</span>
+                                <div class="fader-track-wrapper">
+                                    <input type="range" id="slider_ma2_${i}" min="0" max="100" value="0"
+                                        onmousedown="isDragging['slider_ma2_${i}']=true" onmouseup="isDragging['slider_ma2_${i}']=false"
+                                        ontouchstart="isDragging['slider_ma2_${i}']=true" ontouchend="isDragging['slider_ma2_${i}']=false"
+                                        oninput="onFaderInput('slider_ma2_${i}', cfg.var_ma2_pref, '${i}', this.value)">
+                                </div>
+                                <button class="hw-btn w-full mt-2" style="font-size:10px; padding:6px 0; width:100%;" onclick="fire('2/3/${i}')">GO</button>
+                            </div>`);
+                        }
+                    </script>
+                </div>
             </div>
         </div>
 
         <!-- RESOLUME TAB -->
-        <div id="tab-reso" class="tab-content hidden">
-            <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Transport</div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px;">
-                <button class="hw-btn" onclick="fire('3/1/1')">TRIG SEL</button>
-                <button class="hw-btn" onclick="fire('3/1/2')">CUT</button>
-                <button class="hw-btn" onclick="fire('3/1/3')">AUTO</button>
+        <div id="tab-reso" class="tab-content tab-zone">
+            
+            <div class="widget" id="wid-reso-trans" data-name="Reso Transport">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Transport & Columns</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
+                    <button class="hw-btn" onclick="fire('3/1/1')">TRIG SEL</button>
+                    <button class="hw-btn" onclick="fire('3/1/2')">CUT</button>
+                    <button class="hw-btn" onclick="fire('3/1/3')">AUTO</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <button class="hw-btn" style="padding:10px 0; font-size:11px;" onclick="fire('3/2/1')">COL 1</button>
+                    <button class="hw-btn" style="padding:10px 0; font-size:11px;" onclick="fire('3/2/2')">COL 2</button>
+                    <button class="hw-btn" style="padding:10px 0; font-size:11px;" onclick="fire('3/2/3')">COL 3</button>
+                    <button class="hw-btn" style="padding:10px 0; font-size:11px;" onclick="fire('3/2/4')">COL 4</button>
+                </div>
             </div>
 
-            <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Layer Opacity</div>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
-                <script>
-                    for(let i=1; i<=3; i++) {
-                        document.write(`
-                        <div class="fader-container">
-                            <span class="fader-label">L${i}</span>
-                            <div class="fader-track-wrapper">
-                                <input type="range" id="slider_reso_${i}" min="0" max="100" value="100"
-                                    onmousedown="isDragging['slider_reso_${i}']=true" onmouseup="isDragging['slider_reso_${i}']=false"
-                                    ontouchstart="isDragging['slider_reso_${i}']=true" ontouchend="isDragging['slider_reso_${i}']=false"
-                                    oninput="onFaderInput('slider_reso_${i}', cfg.var_reso_pref, '${i}', this.value)">
-                            </div>
-                        </div>`);
-                    }
-                </script>
-                <div class="fader-container">
-                    <span class="fader-label" style="color: var(--accent-reso);">MST</span>
-                    <div class="fader-track-wrapper">
-                        <input type="range" id="slider_reso_m" min="0" max="100" value="100"
-                            onmousedown="isDragging['slider_reso_m']=true" onmouseup="isDragging['slider_reso_m']=false"
-                            ontouchstart="isDragging['slider_reso_m']=true" ontouchend="isDragging['slider_reso_m']=false"
-                            oninput="onFaderInput('slider_reso_m', cfg.var_reso_pref, 'm', this.value)">
+            <div class="widget" id="wid-reso-decks" data-name="Reso Decks">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Decks</div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <button class="hw-btn" style="padding:12px 0;" onclick="fire('3/3/1')">D 1</button>
+                    <button class="hw-btn" style="padding:12px 0;" onclick="fire('3/3/2')">D 2</button>
+                    <button class="hw-btn" style="padding:12px 0;" onclick="fire('3/3/3')">D 3</button>
+                    <button class="hw-btn" style="padding:12px 0;" onclick="fire('3/3/4')">D 4</button>
+                </div>
+            </div>
+
+            <div class="widget" id="wid-reso-layers" data-name="Reso Layers">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Layer Opacity</div>
+                <div style="display: flex; gap: 6px; overflow-x: auto;">
+                    <script>
+                        for(let i=1; i<=3; i++) {
+                            document.write(`
+                            <div class="fader-container" style="min-width: 60px;">
+                                <span class="fader-label">L${i}</span>
+                                <div class="fader-track-wrapper">
+                                    <input type="range" id="slider_reso_${i}" min="0" max="100" value="100"
+                                        onmousedown="isDragging['slider_reso_${i}']=true" onmouseup="isDragging['slider_reso_${i}']=false"
+                                        ontouchstart="isDragging['slider_reso_${i}']=true" ontouchend="isDragging['slider_reso_${i}']=false"
+                                        oninput="onFaderInput('slider_reso_${i}', cfg.var_reso_pref, '${i}', this.value)">
+                                </div>
+                            </div>`);
+                        }
+                    </script>
+                    <div class="fader-container" style="min-width: 60px;">
+                        <span class="fader-label" style="color: var(--accent-reso);">MST</span>
+                        <div class="fader-track-wrapper">
+                            <input type="range" id="slider_reso_m" min="0" max="100" value="100"
+                                onmousedown="isDragging['slider_reso_m']=true" onmouseup="isDragging['slider_reso_m']=false"
+                                ontouchstart="isDragging['slider_reso_m']=true" ontouchend="isDragging['slider_reso_m']=false"
+                                oninput="onFaderInput('slider_reso_m', cfg.var_reso_pref, 'm', this.value)">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- WING TAB -->
-        <div id="tab-wing" class="tab-content hidden">
-            <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px;">
-                <script>
-                    for(let i=1; i<=8; i++) {
-                        document.write(`
-                        <div class="fader-container wing-ch-${i}" style="min-width: 65px;">
-                            <span class="fader-label">CH${i}</span>
-                            <button class="hw-btn" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fire('4/1/${i}')">M</button>
-                            <div class="fader-track-wrapper">
-                                <input type="range" id="slider_wing_${i}" min="0" max="100" value="75"
-                                    onmousedown="isDragging['slider_wing_${i}']=true" onmouseup="isDragging['slider_wing_${i}']=false"
-                                    ontouchstart="isDragging['slider_wing_${i}']=true" ontouchend="isDragging['slider_wing_${i}']=false"
-                                    oninput="onFaderInput('slider_wing_${i}', cfg.var_wing_pref, '${i}', this.value)">
-                            </div>
-                        </div>`);
-                    }
-                </script>
-                
-                <div id="wing-master-divider" style="width:2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 0 4px;"></div>
-                
-                <div id="wing-master-container" class="fader-container" style="min-width: 75px;">
-                    <span class="fader-label" style="color: var(--accent-wing);">MAIN</span>
-                    <button class="hw-btn btn-stop" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fire('4/1/10')">M</button>
-                    <div class="fader-track-wrapper">
-                        <input type="range" id="slider_wing_m" min="0" max="100" value="75"
-                            onmousedown="isDragging['slider_wing_m']=true" onmouseup="isDragging['slider_wing_m']=false"
-                            ontouchstart="isDragging['slider_wing_m']=true" ontouchend="isDragging['slider_wing_m']=false"
-                            oninput="onFaderInput('slider_wing_m', '', cfg.var_wing_mst, this.value)">
+        <div id="tab-wing" class="tab-content tab-zone">
+            
+            <div class="widget" id="wid-wing-master" data-name="Wing Master & DCA">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">MAIN MIX</div>
+                <div style="display: flex; gap: 8px;">
+                    <div class="fader-container" style="flex:1;">
+                        <span class="fader-label" style="color: var(--accent-wing);">MAIN LR</span>
+                        <button class="hw-btn btn-stop" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fire('4/1/10')">MUTE</button>
+                        <div class="fader-track-wrapper">
+                            <input type="range" id="slider_wing_m" min="0" max="100" value="75" style="width:120px;"
+                                onmousedown="isDragging['slider_wing_m']=true" onmouseup="isDragging['slider_wing_m']=false"
+                                ontouchstart="isDragging['slider_wing_m']=true" ontouchend="isDragging['slider_wing_m']=false"
+                                oninput="onFaderInput('slider_wing_m', '', cfg.var_wing_mst, this.value)">
+                        </div>
                     </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 2;">
+                        <button class="hw-btn" onclick="fire('4/2/1')">DCA 1</button>
+                        <button class="hw-btn" onclick="fire('4/2/2')">DCA 2</button>
+                        <button class="hw-btn" onclick="fire('4/2/3')">DCA 3</button>
+                        <button class="hw-btn" onclick="fire('4/2/4')">DCA 4</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="wid-wing-ch14" data-name="Wing CH 1-4">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Channels 1-4</div>
+                <div style="display: flex; gap: 6px; overflow-x: auto;">
+                    <script>
+                        for(let i=1; i<=4; i++) {
+                            document.write(`
+                            <div class="fader-container" style="flex:1; min-width: 60px;">
+                                <span class="fader-label">CH${i}</span>
+                                <button class="hw-btn" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fire('4/1/${i}')">M</button>
+                                <div class="fader-track-wrapper">
+                                    <input type="range" id="slider_wing_${i}" min="0" max="100" value="75"
+                                        onmousedown="isDragging['slider_wing_${i}']=true" onmouseup="isDragging['slider_wing_${i}']=false"
+                                        ontouchstart="isDragging['slider_wing_${i}']=true" ontouchend="isDragging['slider_wing_${i}']=false"
+                                        oninput="onFaderInput('slider_wing_${i}', cfg.var_wing_pref, '${i}', this.value)">
+                                </div>
+                            </div>`);
+                        }
+                    </script>
+                </div>
+            </div>
+
+            <div class="widget" id="wid-wing-ch58" data-name="Wing CH 5-8">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div class="widget-title">Channels 5-8</div>
+                <div style="display: flex; gap: 6px; overflow-x: auto;">
+                    <script>
+                        for(let i=5; i<=8; i++) {
+                            document.write(`
+                            <div class="fader-container" style="flex:1; min-width: 60px;">
+                                <span class="fader-label">CH${i}</span>
+                                <button class="hw-btn" style="width:100%; margin-bottom:8px; padding:8px 0; font-size:11px;" onclick="fire('4/1/${i}')">M</button>
+                                <div class="fader-track-wrapper">
+                                    <input type="range" id="slider_wing_${i}" min="0" max="100" value="75"
+                                        onmousedown="isDragging['slider_wing_${i}']=true" onmouseup="isDragging['slider_wing_${i}']=false"
+                                        ontouchstart="isDragging['slider_wing_${i}']=true" ontouchend="isDragging['slider_wing_${i}']=false"
+                                        oninput="onFaderInput('slider_wing_${i}', cfg.var_wing_pref, '${i}', this.value)">
+                                </div>
+                            </div>`);
+                        }
+                    </script>
                 </div>
             </div>
         </div>
 
         <!-- MPLAY TAB -->
-        <div id="tab-mplay" class="tab-content hidden" style="flex-direction: column; justify-content: center; gap: 12px; height: 100%;">
+        <div id="tab-mplay" class="tab-content tab-zone">
             
-            <!-- Restored MultiPlay Active Cue Display -->
-            <div style="background: rgba(0,255,64,0.05); border: 1px solid rgba(0,255,64,0.3); border-radius: 8px; padding: 16px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0,255,64,0.05);">
-                <div style="font-size: 10px; color: #00ff40; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px;">Active Cue Sequence</div>
-                <div id="txt-mplay-tab" style="font-size: 20px; font-family: monospace; font-weight: bold; color: white; text-shadow: 0 0 10px rgba(0,255,64,0.5);">Awaiting Timeline...</div>
+            <div class="widget" id="wid-mp-status" data-name="MultiPlay Status">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div style="background: rgba(0,255,64,0.05); border: 1px solid rgba(0,255,64,0.3); border-radius: 8px; padding: 16px; text-align: center;">
+                    <div style="font-size: 10px; color: #00ff40; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Active Cue Sequence</div>
+                    <div id="txt-mplay-tab" style="font-size: 20px; font-family: monospace; font-weight: bold; color: white;">Awaiting Timeline...</div>
+                </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="hw-btn" style="padding: 20px 0; font-size: 16px;" onclick="fire('5/1/1')">PREV CUE</button>
-                <button class="hw-btn" style="padding: 20px 0; font-size: 16px;" onclick="fire('5/1/2')">NEXT CUE</button>
+            <div class="widget" id="wid-mp-nav" data-name="MultiPlay Transport">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom:10px;">
+                    <button class="hw-btn" style="padding: 20px 0; font-size: 14px;" onclick="fire('5/1/1')">PREV CUE</button>
+                    <button class="hw-btn" style="padding: 20px 0; font-size: 14px;" onclick="fire('5/1/2')">NEXT CUE</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="hw-btn" style="padding: 16px 0;" onclick="fire('5/1/3')">PAUSE</button>
+                    <button class="hw-btn" style="padding: 16px 0;" onclick="fire('5/1/4')">FADE OUT</button>
+                </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                <button class="hw-btn btn-stop" style="padding: 24px 0; font-size: 18px;" onclick="fire('5/1/5')">STOP ALL</button>
-                <button class="hw-btn btn-go" style="padding: 24px 0; font-size: 22px;" onclick="fire('5/1/6')">GO</button>
+
+            <div class="widget" id="wid-mp-action" data-name="MultiPlay Action">
+                <div class="drag-handle">☰ DRAG TO REORDER</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="hw-btn btn-stop" style="padding: 24px 0; font-size: 18px;" onclick="fire('5/1/5')">STOP ALL</button>
+                    <button class="hw-btn btn-go" style="padding: 24px 0; font-size: 22px;" onclick="fire('5/1/6')">GO</button>
+                </div>
             </div>
         </div>
 
-<!-- SETUP TAB -->
-        <div id="tab-setup" class="tab-content hidden">
+        <!-- SETUP TAB -->
+        <div id="tab-setup" class="tab-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                 <h2 style="font-size: 16px; font-weight: bold; margin:0;">Settings & Routing</h2>
                 <button style="background: #2481cc; color: white; border: none; font-weight: bold; padding: 8px 14px; border-radius: 6px; font-size: 12px;" onclick="saveSettings()">SAVE</button>
@@ -286,29 +398,21 @@
             <label class="setup-label">System Polling Rate (ms)</label>
             <input type="number" id="cfg-poll" class="setup-input" value="1200">
 
-            <div class="section-header">Dynamic Layout</div>
-            <div class="toggle-row">
-                <span style="font-size:12px; font-weight:bold; color:var(--text-muted);">Show MA2 Macros</span>
-                <label class="switch"><input type="checkbox" id="cfg-ui-macros"><span class="slider"></span></label>
-            </div>
-            <div class="toggle-row">
-                <span style="font-size:12px; font-weight:bold; color:var(--text-muted);">Show Wing Master</span>
-                <label class="switch"><input type="checkbox" id="cfg-ui-wingmst"><span class="slider"></span></label>
-            </div>
-            <div style="margin-top:14px;">
-                <label class="setup-label">Wing Channels (1-8): <span id="wingch-val" style="color:var(--accent-wing);">5</span></label>
-                <input type="range" id="cfg-ui-wingch" min="1" max="8" value="5" style="width:100%; transform:none; position:relative; left:0; top:0; margin: 10px 0;" oninput="document.getElementById('wingch-val').innerText=this.value">
+            <div class="section-header">Widget Visibility</div>
+            <div id="widget-toggles-container">
+                <!-- Dynamically populated by JS based on .widget elements -->
             </div>
 
-            <div class="section-header">Status Buttons (Page/Row/Col)</div>
-            <label class="setup-label">MA2 Monitor Button</label>
-            <input type="text" id="cfg-stat-ma2" class="setup-input" value="99/1/1">
-            <label class="setup-label">Resolume Monitor Button</label>
-            <input type="text" id="cfg-stat-reso" class="setup-input" value="99/1/2">
-            <label class="setup-label">Wing Monitor Button</label>
-            <input type="text" id="cfg-stat-wing" class="setup-input" value="99/1/3">
-            <label class="setup-label">MultiPlay Monitor Button</label>
-            <input type="text" id="cfg-stat-mplay" class="setup-input" value="99/1/4">
+            <div class="section-header">Status Variables (Text Return)</div>
+            <p style="font-size:10px; color:#888; margin-bottom:10px;">Enter the Custom or Internal Variable name (e.g., mp3_status).</p>
+            <label class="setup-label">MA2 Monitor Var</label>
+            <input type="text" id="cfg-stat-ma2" class="setup-input" value="ma2_status">
+            <label class="setup-label">Resolume Monitor Var</label>
+            <input type="text" id="cfg-stat-reso" class="setup-input" value="reso_status">
+            <label class="setup-label">Wing Monitor Var</label>
+            <input type="text" id="cfg-stat-wing" class="setup-input" value="wing_status">
+            <label class="setup-label">MultiPlay Monitor Var</label>
+            <input type="text" id="cfg-stat-mplay" class="setup-input" value="mp3_status">
 
             <div class="section-header">Fader Variables (Direct Feedback)</div>
             <label class="setup-label">Wing Fader Prefix (Appends 1-8)</label>
@@ -337,17 +441,17 @@
         tg.expand();
 
         let cfg = {
-            url: '/api/companion',
-            poll: 1200,
-            stat_ma2: '99/1/1', stat_reso: '99/1/2', stat_wing: '99/1/3', stat_mplay: '99/1/4',
-            var_wing_pref: 'fad_wing_', var_wing_mst: 'fad_wing_m',
-            var_ma2_pref: 'fad_ma2_', var_reso_pref: 'fad_reso_',
-            ui_macros: true, ui_wingmst: true, ui_wingch: 5
+            url: '/api/companion', poll: 1200,
+            stat_ma2: 'ma2_status', stat_reso: 'reso_status', stat_wing: 'wing_status', stat_mplay: 'mp3_status',
+            var_wing_pref: 'fad_wing_', var_wing_mst: 'fad_wing_m', var_ma2_pref: 'fad_ma2_', var_reso_pref: 'fad_reso_',
+            widgetVis: {}, widgetOrder: {}
         };
 
         let activeTab = 'main';
         let isDragging = {};
         let throttleTimers = {};
+        let sortables = [];
+        let isEditMode = false;
 
         function init() {
             const saved = localStorage.getItem('proctrl_cfg');
@@ -365,26 +469,84 @@
             document.getElementById('cfg-var-ma2').value = cfg.var_ma2_pref;
             document.getElementById('cfg-var-reso').value = cfg.var_reso_pref;
 
-            document.getElementById('cfg-ui-macros').checked = cfg.ui_macros;
-            document.getElementById('cfg-ui-wingmst').checked = cfg.ui_wingmst;
-            document.getElementById('cfg-ui-wingch').value = cfg.ui_wingch;
-            document.getElementById('wingch-val').innerText = cfg.ui_wingch;
-
+            initSortable();
+            buildSetupToggles();
             applyLayout();
             pollStatusLoop();
         }
 
-        function applyLayout() {
-            document.getElementById('ma2-macros-container').style.display = cfg.ui_macros ? 'block' : 'none';
-            document.getElementById('wing-master-divider').style.display = cfg.ui_wingmst ? 'block' : 'none';
-            document.getElementById('wing-master-container').style.display = cfg.ui_wingmst ? 'flex' : 'none';
-            
-            for(let i=1; i<=8; i++) {
-                const els = document.getElementsByClassName(`wing-ch-${i}`);
-                for(let el of els) el.style.display = (i <= cfg.ui_wingch) ? 'flex' : 'none';
+        // --- Layout & Widget System ---
+        function initSortable() {
+            document.querySelectorAll('.tab-zone').forEach(zone => {
+                sortables.push(new Sortable(zone, {
+                    handle: '.drag-handle', animation: 150, disabled: true,
+                    onEnd: function () { saveLayoutState(); }
+                }));
+            });
+        }
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            if(isEditMode) {
+                document.body.classList.add('edit-mode');
+                sortables.forEach(s => s.option("disabled", false));
+                document.getElementById('btn-edit-layout').innerText = "DONE EDITING";
+            } else {
+                document.body.classList.remove('edit-mode');
+                sortables.forEach(s => s.option("disabled", true));
+                document.getElementById('btn-edit-layout').innerText = "EDIT LAYOUT";
+                saveLayoutState();
             }
         }
 
+        function saveLayoutState() {
+            const order = {};
+            document.querySelectorAll('.tab-zone').forEach(zone => {
+                order[zone.id] = Array.from(zone.children).map(child => child.id);
+            });
+            cfg.widgetOrder = order;
+            localStorage.setItem('proctrl_cfg', JSON.stringify(cfg));
+        }
+
+        function buildSetupToggles() {
+            const container = document.getElementById('widget-toggles-container');
+            container.innerHTML = '';
+            document.querySelectorAll('.widget').forEach(w => {
+                const id = w.id;
+                const name = w.getAttribute('data-name');
+                const isVisible = cfg.widgetVis[id] !== false; // Default true
+                
+                const row = document.createElement('div');
+                row.className = 'toggle-row';
+                row.innerHTML = `
+                    <span style="font-size:12px; font-weight:bold; color:var(--text-muted);">${name}</span>
+                    <label class="switch"><input type="checkbox" id="tgl_${id}" ${isVisible ? 'checked' : ''}><span class="slider"></span></label>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function applyLayout() {
+            // Apply Saved Order
+            if (cfg.widgetOrder) {
+                Object.keys(cfg.widgetOrder).forEach(zoneId => {
+                    const zone = document.getElementById(zoneId);
+                    if (zone) {
+                        cfg.widgetOrder[zoneId].forEach(widgetId => {
+                            const widget = document.getElementById(widgetId);
+                            if (widget) zone.appendChild(widget);
+                        });
+                    }
+                });
+            }
+            // Apply Saved Visibility
+            document.querySelectorAll('.widget').forEach(w => {
+                if (cfg.widgetVis[w.id] === false) w.style.display = 'none';
+                else w.style.display = 'block';
+            });
+        }
+
+        // --- Settings ---
         function saveSettings() {
             cfg.url = document.getElementById('cfg-url').value.replace(/\/$/, '');
             cfg.poll = parseInt(document.getElementById('cfg-poll').value) || 1200;
@@ -398,9 +560,11 @@
             cfg.var_ma2_pref = document.getElementById('cfg-var-ma2').value;
             cfg.var_reso_pref = document.getElementById('cfg-var-reso').value;
 
-            cfg.ui_macros = document.getElementById('cfg-ui-macros').checked;
-            cfg.ui_wingmst = document.getElementById('cfg-ui-wingmst').checked;
-            cfg.ui_wingch = parseInt(document.getElementById('cfg-ui-wingch').value) || 5;
+            // Save Visibility states
+            document.querySelectorAll('.widget').forEach(w => {
+                const checkbox = document.getElementById(`tgl_${w.id}`);
+                if(checkbox) cfg.widgetVis[w.id] = checkbox.checked;
+            });
 
             localStorage.setItem('proctrl_cfg', JSON.stringify(cfg));
             applyLayout();
@@ -408,22 +572,22 @@
             switchTab('main', document.querySelector('.nav-btn'));
         }
 
+        // --- Navigation ---
         function switchTab(tabId, btnEl) {
             activeTab = tabId;
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
             const target = document.getElementById(`tab-${tabId}`);
-            if (target) {
-                target.classList.remove('hidden');
-                if(tabId === 'mplay') target.style.display = 'flex';
-                else target.style.display = 'block';
-            }
+            if (target) target.classList.add('active');
             btnEl.classList.add('active');
+            
+            if(isEditMode) toggleEditMode(); // Exit edit mode on tab switch
             tg.HapticFeedback.impactOccurred('light');
-            pollActiveTabFeedback(); // Instantly fetch faders for new tab
+            pollActiveTabFeedback();
         }
 
+        // --- Network Logic ---
         async function fire(address) {
             tg.HapticFeedback.impactOccurred('medium');
             if (!cfg.url) return;
@@ -441,7 +605,8 @@
             try { await fetch(`${cfg.url}/api/custom-variable/${name}?value=${val}`, { method: 'PUT' }); } catch (e) {}
         }
 
-        async function fetchCustomVar(name) {
+        // --- Variable Polling Engine ---
+        async function fetchVarValue(name) {
             if (!name) return null;
             try {
                 const res = await fetch(`${cfg.url}/api/custom-variable/${name}`);
@@ -451,14 +616,13 @@
             } catch (e) { return null; }
         }
 
-        // Direct Feedback Polling (Only pulls faders for the tab you are looking at)
         async function pollActiveTabFeedback() {
             if (!cfg.url || activeTab === 'main' || activeTab === 'mplay' || activeTab === 'setup') return;
-            
             let fadersToPoll = [];
+            
             if (activeTab === 'wing') {
-                for(let i=1; i<=cfg.ui_wingch; i++) fadersToPoll.push({ id: `slider_wing_${i}`, varName: `${cfg.var_wing_pref}${i}` });
-                if (cfg.ui_wingmst) fadersToPoll.push({ id: 'slider_wing_m', varName: cfg.var_wing_mst });
+                for(let i=1; i<=8; i++) fadersToPoll.push({ id: `slider_wing_${i}`, varName: `${cfg.var_wing_pref}${i}` });
+                fadersToPoll.push({ id: 'slider_wing_m', varName: cfg.var_wing_mst });
             } else if (activeTab === 'ma2') {
                 for(let i=1; i<=6; i++) fadersToPoll.push({ id: `slider_ma2_${i}`, varName: `${cfg.var_ma2_pref}${i}` });
             } else if (activeTab === 'reso') {
@@ -467,7 +631,7 @@
             }
 
             if (fadersToPoll.length > 0) {
-                const results = await Promise.all(fadersToPoll.map(f => fetchCustomVar(f.varName)));
+                const results = await Promise.all(fadersToPoll.map(f => fetchVarValue(f.varName)));
                 fadersToPoll.forEach((fader, idx) => {
                     const val = results[idx];
                     if (val !== null && !isDragging[fader.id]) {
@@ -483,52 +647,30 @@
 
             try {
                 const [ma2, reso, wing, mplay] = await Promise.all([
-                    fetchLocationData(cfg.stat_ma2), fetchLocationData(cfg.stat_reso),
-                    fetchLocationData(cfg.stat_wing), fetchLocationData(cfg.stat_mplay)
+                    fetchVarValue(cfg.stat_ma2), fetchVarValue(cfg.stat_reso),
+                    fetchVarValue(cfg.stat_wing), fetchVarValue(cfg.stat_mplay)
                 ]);
 
                 setOnline(true);
-                updatePanel('stat-ma2', 'txt-ma2', ma2);
-                updatePanel('stat-reso', 'txt-reso', reso);
-                updatePanel('stat-wing', 'txt-wing', wing);
-                updatePanel('stat-mplay', 'txt-mplay', mplay);
+                updatePanelText('txt-ma2', ma2);
+                updatePanelText('txt-reso', reso);
+                updatePanelText('txt-wing', wing);
+                updatePanelText('txt-mplay', mplay);
+                
+                const mplayTabTxt = document.getElementById('txt-mplay-tab');
+                if (mplayTabTxt) mplayTabTxt.innerText = mplay ? mplay.replace(/\\n/g, '\n') : 'No Data';
                 
                 await pollActiveTabFeedback();
-
             } catch (err) { setOnline(false); }
 
             setTimeout(pollStatusLoop, cfg.poll);
         }
 
-        async function fetchLocationData(address) {
-            if (!address) return null;
-            const res = await fetch(`${cfg.url}/api/location/${address}`);
-            if (!res.ok) return null;
-            return await res.json();
-        }
-
-        function updatePanel(panelId, textId, data) {
-            const panel = document.getElementById(panelId);
+        function updatePanelText(textId, textData) {
             const txt = document.getElementById(textId);
-            if (!panel || !txt) return;
-
-            if (data && data.text) {
-                const formattedText = data.text.replace(/\\n/g, '\n');
-                txt.innerText = formattedText;
-                
-                // Duplicate Multiplay text to the dedicated tab
-                if (textId === 'txt-mplay') {
-                    const mplayTabTxt = document.getElementById('txt-mplay-tab');
-                    if (mplayTabTxt) mplayTabTxt.innerText = formattedText;
-                }
-
-                if (data.bgcolor !== undefined && data.bgcolor !== 0) {
-                    const hexColor = '#' + parseInt(data.bgcolor).toString(16).padStart(6, '0');
-                    panel.style.backgroundColor = hexColor + '40';
-                    panel.style.borderColor = hexColor;
-                } else {
-                    panel.style.backgroundColor = 'var(--bg-panel)';
-                }
+            if (!txt) return;
+            if (textData !== null && textData !== undefined) {
+                txt.innerText = String(textData).replace(/\\n/g, '\n');
             } else {
                 txt.innerText = 'No Data';
             }
@@ -536,12 +678,11 @@
 
         function setOnline(status) {
             const dot = document.getElementById('conn-dot');
-            const txt = document.getElementById('conn-text');
-            if (status) { dot.className = 'status-dot online'; txt.innerText = 'Online'; } 
-            else { dot.className = 'status-dot offline'; txt.innerText = 'Offline'; }
+            if (status) { dot.className = 'status-dot online'; } 
+            else { dot.className = 'status-dot offline'; }
         }
 
         init();
     </script>
 </body>
-    </html>
+</html>
